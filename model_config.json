@@ -1,0 +1,13 @@
+{
+    "Architecture": "LSTM (Long Short-Term Memory)",
+    "Input Features": 78,
+    "Hidden State Size": 128,
+    "Layers": 2,
+    "Output Classes": 16,
+    "Sequence Length": 10,
+    "Batch Size": 1024,
+    "Loss Function": "CrossEntropyLoss",
+    "Optimizer": "Adam",
+    "Learning Rate": 0.001,
+    "Evaluation Dataset": "Cleaned_Data/clean_02-14-2018.csv"
+}

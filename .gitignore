@@ -1,0 +1,16 @@
+# Datasets
+CIC-IDS-2018/
+Cleaned_Data/
+*.csv
+*.pcap
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Graphify build outputs
+graphify-out/
+.graphify_*
+
+# Streamlit
+.streamlit/
