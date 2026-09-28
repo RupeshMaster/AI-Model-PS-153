@@ -205,14 +205,14 @@ def load_sample_dataset(filename: str = Form(...)):
 
 @app.post("/api/upload")
 async def upload_telemetry_csv(file: UploadFile = File(...)):
-    """Handles streaming upload of CSV telemetry files up to 500MB."""
+    """Handles streaming upload of large CSV telemetry files up to 3GB+."""
     try:
         dest_path = os.path.join(UPLOAD_DIR, file.filename)
         with open(dest_path, "wb") as buffer:
-            while chunk := await file.read(1024 * 1024 * 5): # 5MB chunk
+            while chunk := await file.read(1024 * 1024 * 16): # 16MB chunk streaming
                 buffer.write(chunk)
 
-        result = engine.load_dataset(dest_path, nrows=10000, source_name=file.filename)
+        result = engine.load_dataset(dest_path, nrows=15000, source_name=file.filename)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

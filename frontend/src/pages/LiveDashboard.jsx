@@ -266,10 +266,10 @@ export default function LiveDashboard({
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="badge badge-cyan" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>STEP 1</span>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Ingest Network Traffic Data (CSV Up to 500MB)</h3>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Ingest Network Traffic Data (CSV Up to 3GB)</h3>
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Upload raw network flow captures or select a pre-loaded attack scenario below.
+                Upload raw network flow captures (up to 3GB) or select a pre-loaded attack scenario below.
               </p>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function LiveDashboard({
               style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <FontAwesomeIcon icon={faUpload} style={{ fontSize: '14px' }} />
-              <span>{uploading ? 'Ingesting (500MB max)...' : 'Choose CSV File to Upload'}</span>
+              <span>{uploading ? 'Ingesting (3GB max)...' : 'Choose CSV File to Upload'}</span>
             </button>
           </div>
 

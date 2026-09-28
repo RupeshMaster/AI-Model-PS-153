@@ -83,7 +83,7 @@ export default function App() {
     }
   };
 
-  // Upload CSV Telemetry (up to 500MB)
+  // Upload CSV Telemetry (up to 3GB+)
   const handleFileUpload = async (fileOrEvent) => {
     let file = null;
     if (fileOrEvent?.target?.files) {
@@ -93,8 +93,21 @@ export default function App() {
     }
     if (!file) return;
 
+    const MAX_SIZE = 3.8 * 1024 * 1024 * 1024; // 3.8GB max
+    if (file.size > MAX_SIZE) {
+      setUploadNotification({
+        type: 'error',
+        message: `File exceeds maximum allowed upload size of 3.5GB (Selected: ${(file.size / (1024*1024*1024)).toFixed(2)} GB)`
+      });
+      return;
+    }
+
     setUploading(true);
-    setUploadNotification({ type: 'info', message: `Uploading and ingesting ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)...` });
+    const sizeDisplay = file.size >= 1024 * 1024 * 1024
+      ? `${(file.size / (1024*1024*1024)).toFixed(2)} GB`
+      : `${(file.size / (1024*1024)).toFixed(1)} MB`;
+
+    setUploadNotification({ type: 'info', message: `Streaming & ingesting ${file.name} (${sizeDisplay})...` });
     const formData = new FormData();
     formData.append('file', file);
 
