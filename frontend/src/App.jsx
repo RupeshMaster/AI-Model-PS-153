@@ -1,0 +1,182 @@
+import React, { useState, useEffect, useRef } from 'react';
+import Navbar from './components/Navbar';
+import LiveDashboard from './pages/LiveDashboard';
+import MitreProgression from './pages/MitreProgression';
+import FlowInspector from './pages/FlowInspector';
+import XaiStudio from './pages/XaiStudio';
+import BenchmarkLab from './pages/BenchmarkLab';
+import IncidentReports from './pages/IncidentReports';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [currentFrame, setCurrentFrame] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('CONNECTING');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1.0);
+  const [kSteps, setKSteps] = useState(4);
+  const [uploading, setUploading] = useState(false);
+  const [sampleDatasets, setSampleDatasets] = useState([]);
+
+  const wsRef = useRef(null);
+
+  // Initialize WebSocket Connection
+  useEffect(() => {
+    let ws;
+    let reconnectTimer;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket('ws://localhost:8000/ws/stream');
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('[AEGIS WS] Connected to live telemetry stream');
+        setConnectionStatus('CONNECTED');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setCurrentFrame(data);
+        } catch (err) {
+          console.error('[AEGIS WS] Error parsing frame:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('[AEGIS WS] Disconnected. Reconnecting in 2s...');
+        setConnectionStatus('DISCONNECTED');
+        reconnectTimer = setTimeout(connectWebSocket, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('[AEGIS WS] Error:', err);
+        setConnectionStatus('ERROR');
+      };
+    };
+
+    connectWebSocket();
+
+    // Fetch available sample captures
+    fetch('http://localhost:8000/api/datasets')
+      .then(res => res.json())
+      .then(data => {
+        if (data.datasets) setSampleDatasets(data.datasets);
+      })
+      .catch(err => console.error("Error fetching datasets:", err));
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, []);
+
+  // Send control messages over WebSocket
+  const sendControl = (payload) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(payload));
+      if (payload.action === 'PLAY') setIsPlaying(true);
+      if (payload.action === 'PAUSE') setIsPlaying(false);
+      if (payload.action === 'RESET') setIsPlaying(false);
+    }
+  };
+
+  // Upload CSV Telemetry (up to 500MB)
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        alert(`Successfully ingested ${data.total_events} network telemetry events from ${data.source}!`);
+        sendControl({ action: 'RESET' });
+      } else {
+        alert(`Error uploading file: ${data.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      alert(`Network upload error: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Quick-load sample dataset from server
+  const loadSampleDataset = async (filename) => {
+    const formData = new FormData();
+    formData.append('filename', filename);
+
+    try {
+      const res = await fetch('http://localhost:8000/api/load-sample', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        sendControl({ action: 'RESET' });
+      }
+    } catch (err) {
+      console.error("Error loading sample dataset:", err);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Navigation Header */}
+      <Navbar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        currentFrame={currentFrame} 
+        connectionStatus={connectionStatus} 
+      />
+
+      {/* Main Content View Container */}
+      <main style={{ flex: 1, padding: '0 16px 24px 16px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+        {activeTab === 'dashboard' && (
+          <LiveDashboard 
+            currentFrame={currentFrame}
+            isPlaying={isPlaying}
+            sendControl={sendControl}
+            uploading={uploading}
+            handleFileUpload={handleFileUpload}
+            kSteps={kSteps}
+            setKSteps={setKSteps}
+            speed={speed}
+            setSpeed={setSpeed}
+            sampleDatasets={sampleDatasets}
+            loadSampleDataset={loadSampleDataset}
+          />
+        )}
+
+        {activeTab === 'mitre' && (
+          <MitreProgression currentFrame={currentFrame} />
+        )}
+
+        {activeTab === 'inspector' && (
+          <FlowInspector currentFrame={currentFrame} />
+        )}
+
+        {activeTab === 'xai' && (
+          <XaiStudio currentFrame={currentFrame} />
+        )}
+
+        {activeTab === 'benchmarks' && (
+          <BenchmarkLab />
+        )}
+
+        {activeTab === 'reports' && (
+          <IncidentReports currentFrame={currentFrame} />
+        )}
+      </main>
+
+    </div>
+  );
+}
