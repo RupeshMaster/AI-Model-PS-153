@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 
 from world_model import NetworkWorldModel
 from mitre_mapping import MITRE_PHASES, ATTACK_CLASS_MAP
-from train_world_model_dynamics import find_data_files
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -74,15 +73,17 @@ st.title("🛡️ AI Network World Model: Threat Forecasting Dashboard")
 st.caption("NTRO PS 26153 | Autonomous Network State Dynamics P(S_{t+1}|S_t) & K-Step Infiltration Rollout")
 
 # Sidebar
+st.sidebar.header("📁 Upload Telemetry Data")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Network Telemetry (CSV)",
+    type=['csv'],
+    help="Upload a sanitized network flow CSV (e.g. CIC-IDS-2018 capture) with 78 features."
+)
+
+if uploaded_file is not None:
+    st.sidebar.success(f"📄 Uploaded: `{uploaded_file.name}`")
+
 st.sidebar.header("🕹️ Simulation Controls")
-data_files = find_data_files()
-dataset_options = ["Upload Custom CSV"] + [os.path.basename(f) for f in data_files]
-
-selected_source = st.sidebar.selectbox("Select Telemetry Stream", dataset_options)
-uploaded_file = None
-if selected_source == "Upload Custom CSV":
-    uploaded_file = st.sidebar.file_uploader("Upload Network Flow CSV (78 Features)", type=['csv'])
-
 k_steps = st.sidebar.slider("Forecasting Horizon (K-Steps Ahead)", min_value=2, max_value=8, value=4)
 sim_speed = st.sidebar.select_slider("Simulation Streaming Speed", options=["Fast", "Normal", "Step-by-Step"], value="Normal")
 sleep_times = {"Fast": 0.02, "Normal": 0.08, "Step-by-Step": 0.3}
@@ -114,15 +115,11 @@ with col_explain:
 
 # Real-Time Execution Loop
 if run_analysis:
-    # 1. Resolve Dataframe
-    if selected_source == "Upload Custom CSV":
-        if uploaded_file is None:
-            st.error("Please upload a CSV file to begin analysis.")
-            st.stop()
-        df = pd.read_csv(uploaded_file, nrows=5000)
-    else:
-        file_match = [f for f in data_files if os.path.basename(f) == selected_source][0]
-        df = pd.read_csv(file_match, nrows=5000)
+    if uploaded_file is None:
+        st.error("⚠️ Please upload a network telemetry CSV file in the sidebar to begin analysis.")
+        st.stop()
+
+    df = pd.read_csv(uploaded_file, nrows=5000)
 
     df.columns = df.columns.str.strip()
     df = df[df['Label'] != 'Label'] if 'Label' in df.columns else df
