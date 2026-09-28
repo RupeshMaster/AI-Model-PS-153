@@ -172,6 +172,8 @@ class TelemetryStreamEngine:
 
         idx = self.current_index
         seq = self.X_scaled[idx : idx + self.seq_length]
+        target_idx = min(self.total_events - 1, idx + self.seq_length - 1)
+        current_label = self.labels[target_idx] if (hasattr(self, 'labels') and self.labels is not None and len(self.labels) > target_idx) else "Benign"
         
         # Prepare tensor with gradient tracking for explainability
         seq_tensor = torch.tensor(seq, dtype=torch.float32).unsqueeze(0).to(self.device)
