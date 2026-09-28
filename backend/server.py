@@ -136,6 +136,44 @@ def get_confusion_matrix_image():
         return FileResponse(cm_path, media_type="image/png")
     raise HTTPException(status_code=404, detail="Confusion matrix image not found")
 
+@app.get("/api/confusion-matrix/download")
+def download_confusion_matrix_image():
+    cm_path = os.path.join(MODEL_DIR, "confusion_matrix.png")
+    if not os.path.exists(cm_path):
+        cm_path = os.path.join(BASE_DIR, "confusion_matrix.png")
+    if os.path.exists(cm_path):
+        return FileResponse(
+            cm_path, 
+            media_type="image/png", 
+            filename="world_model_confusion_matrix.png",
+            headers={"Content-Disposition": "attachment; filename=world_model_confusion_matrix.png"}
+        )
+    raise HTTPException(status_code=404, detail="Confusion matrix image not found")
+
+@app.get("/api/confusion-matrix/data")
+def get_confusion_matrix_data():
+    data_path = os.path.join(MODEL_DIR, "confusion_matrix_data.json")
+    if not os.path.exists(data_path):
+        data_path = os.path.join(BASE_DIR, "confusion_matrix_data.json")
+    if os.path.exists(data_path):
+        with open(data_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise HTTPException(status_code=404, detail="Confusion matrix data not found")
+
+@app.get("/api/benchmark/download-report")
+def download_benchmark_report():
+    report_path = os.path.join(MODEL_DIR, "model_performance_report.md")
+    if not os.path.exists(report_path):
+        report_path = os.path.join(BASE_DIR, "model_performance_report.md")
+    if os.path.exists(report_path):
+        return FileResponse(
+            report_path, 
+            media_type="text/markdown", 
+            filename="model_performance_report.md",
+            headers={"Content-Disposition": "attachment; filename=model_performance_report.md"}
+        )
+    raise HTTPException(status_code=404, detail="Benchmark report not found")
+
 @app.get("/api/datasets")
 def list_available_datasets():
     datasets = []
@@ -245,11 +283,13 @@ async def websocket_telemetry_stream(websocket: WebSocket):
                 if frame:
                     try:
                         await websocket.send_json(frame)
+                        if frame.get("is_completed"):
+                            engine.set_playback(False)
                     except Exception as err:
                         print(f"[WEBSOCKET] Send error: {err}")
                         break
-                # Compute delay based on speed
-                delay = max(0.015, engine.step_delay / engine.speed)
+                # Compute delay scaled by speed (faster delay for high speeds)
+                delay = max(0.005, 0.04 / (engine.speed ** 0.5))
                 await asyncio.sleep(delay)
             else:
                 await asyncio.sleep(0.05)

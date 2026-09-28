@@ -200,7 +200,7 @@ export default function App() {
         )}
 
         {activeTab === 'benchmarks' && (
-          <BenchmarkLab />
+          <BenchmarkLab currentFrame={currentFrame} />
         )}
 
         {activeTab === 'reports' && (

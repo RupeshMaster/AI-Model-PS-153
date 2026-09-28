@@ -162,9 +162,11 @@ class TelemetryStreamEngine:
         if self.X_scaled is None or self.total_events < self.seq_length:
             return None
 
+        is_completed = False
         if self.current_index + self.seq_length >= self.total_events:
-            # Loop around to beginning of dataset
-            self.current_index = 0
+            self.current_index = max(0, self.total_events - self.seq_length)
+            self.is_playing = False
+            is_completed = True
 
         idx = self.current_index
         seq = self.X_scaled[idx : idx + self.seq_length]
@@ -211,6 +213,8 @@ class TelemetryStreamEngine:
 
         current_label = self.labels[idx + self.seq_length - 1] if self.labels is not None else "Unknown"
 
+        stride = max(1, int(self.speed))
+
         if advance:
             self.history_risks.append(round(inf_prob, 2))
             if len(self.history_risks) > 100:
@@ -219,8 +223,8 @@ class TelemetryStreamEngine:
             # Track flagged anomaly flow
             if inf_prob >= 35.0 or pred_phase_idx > 0:
                 flagged_item = {
-                    "id": f"FL-{idx + self.seq_length}",
-                    "event_index": idx + self.seq_length,
+                    "id": f"FL-{min(self.total_events, idx + self.seq_length)}",
+                    "event_index": min(self.total_events, idx + self.seq_length),
                     "timestamp": time.strftime("%H:%M:%S"),
                     "ground_truth_label": str(current_label),
                     "predicted_attack": attack_meta["name"],
@@ -234,8 +238,13 @@ class TelemetryStreamEngine:
                 if len(self.flagged_flows) > 50:
                     self.flagged_flows.pop()
 
-            # Advance stream pointer
-            self.current_index += 1
+            # Advance stream pointer by stride according to selected stream speed
+            if self.current_index + self.seq_length + stride >= self.total_events:
+                self.current_index = max(0, self.total_events - self.seq_length)
+                self.is_playing = False
+                is_completed = True
+            else:
+                self.current_index += stride
 
         # DEFCON Status Calculation
         if inf_prob >= 75.0 or pred_phase_idx in [3, 4, 5]:
@@ -254,9 +263,11 @@ class TelemetryStreamEngine:
         frame = {
             "source_name": getattr(self, "source_name", "telemetry.csv"),
             "is_playing": self.is_playing,
+            "is_completed": is_completed,
             "speed": self.speed,
+            "stride": stride,
             "k_steps": self.k_steps,
-            "event_index": idx + self.seq_length,
+            "event_index": min(self.total_events, idx + self.seq_length),
             "total_events": self.total_events,
             "timestamp": time.strftime("%H:%M:%S"),
             "inference_latency_ms": round(inference_latency_ms, 2),
@@ -304,7 +315,7 @@ class TelemetryStreamEngine:
         self.is_playing = is_playing
 
     def set_speed(self, speed: float):
-        self.speed = max(0.2, min(5.0, speed))
+        self.speed = max(0.5, min(20.0, float(speed)))
 
     def set_horizon(self, k_steps: int):
         self.k_steps = max(2, min(8, k_steps))

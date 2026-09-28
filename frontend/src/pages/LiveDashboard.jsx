@@ -66,6 +66,7 @@ export default function LiveDashboard({
   const sourceName = currentFrame?.source_name || 'telemetry.csv';
   const latency = currentFrame?.inference_latency_ms || 3.4;
   const progressPct = totalEvents > 0 ? Math.min(100, Math.round((eventIndex / totalEvents) * 100)) : 0;
+  const isCompleted = Boolean(currentFrame?.is_completed || (totalEvents > 0 && eventIndex >= totalEvents));
 
   const defcon = currentFrame?.defcon || {
     level: 5,
@@ -335,23 +336,33 @@ export default function LiveDashboard({
             <span className="badge badge-amber" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>STEP 2</span>
             
             <button 
-              className={isPlaying ? "btn-danger" : "btn-primary"}
-              onClick={() => sendControl({ action: isPlaying ? 'PAUSE' : 'PLAY' })}
+              className={isCompleted ? "btn-secondary" : isPlaying ? "btn-danger" : "btn-primary"}
+              onClick={() => {
+                if (isCompleted) {
+                  sendControl({ action: 'RESET' });
+                  setTimeout(() => sendControl({ action: 'PLAY' }), 80);
+                } else {
+                  sendControl({ action: isPlaying ? 'PAUSE' : 'PLAY' });
+                }
+              }}
               style={{ 
                 padding: '10px 22px', 
                 fontSize: '0.95rem', 
                 fontWeight: '800',
-                boxShadow: isPlaying ? '0 0 20px rgba(255, 0, 85, 0.4)' : '0 0 20px rgba(0, 240, 255, 0.4)'
+                borderColor: isCompleted ? '#00FF88' : undefined,
+                color: isCompleted ? '#00FF88' : undefined,
+                boxShadow: isCompleted ? '0 0 20px rgba(0, 255, 136, 0.4)' : isPlaying ? '0 0 20px rgba(255, 0, 85, 0.4)' : '0 0 20px rgba(0, 240, 255, 0.4)'
               }}
             >
-              {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-              <span>{isPlaying ? 'PAUSE SIMULATION' : 'START SIMULATION'}</span>
+              {isCompleted ? <RotateCcw size={18} /> : isPlaying ? <Pause size={18} /> : <Play size={18} />}
+              <span>{isCompleted ? 'REPLAY SIMULATION' : isPlaying ? 'PAUSE SIMULATION' : 'START SIMULATION'}</span>
             </button>
 
             <button 
               className="btn-secondary"
               onClick={() => sendControl({ action: 'STEP' })}
               title="Advance 1 Sequence Window (W=10)"
+              disabled={isCompleted}
             >
               <SkipForward size={16} />
               <span>Step (+1)</span>
@@ -373,25 +384,30 @@ export default function LiveDashboard({
             {/* Speed Multiplier */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Stream Speed:</span>
-              {[0.5, 1.0, 2.0, 5.0].map(s => (
-                <button
-                  key={s}
-                  className={`btn-secondary ${speed === s ? 'active' : ''}`}
-                  style={{ 
-                    padding: '4px 9px', 
-                    fontSize: '0.75rem', 
-                    borderColor: speed === s ? 'var(--accent-cyan)' : 'var(--border-subtle)',
-                    background: speed === s ? 'rgba(0, 240, 255, 0.15)' : 'transparent',
-                    color: speed === s ? 'var(--accent-cyan)' : 'var(--text-secondary)'
-                  }}
-                  onClick={() => {
-                    setSpeed(s);
-                    sendControl({ action: 'SET_SPEED', speed: s });
-                  }}
-                >
-                  {s}x
-                </button>
-              ))}
+              {[0.5, 1.0, 2.0, 5.0, 10.0].map(s => {
+                const isActive = Number(speed) === Number(s);
+                return (
+                  <button
+                    key={s}
+                    className={`btn-secondary ${isActive ? 'active' : ''}`}
+                    style={{ 
+                      padding: '4px 9px', 
+                      fontSize: '0.75rem', 
+                      borderColor: isActive ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                      background: isActive ? 'rgba(0, 240, 255, 0.18)' : 'transparent',
+                      color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                      boxShadow: isActive ? '0 0 10px rgba(0, 240, 255, 0.3)' : 'none',
+                      fontWeight: isActive ? '700' : '500'
+                    }}
+                    onClick={() => {
+                      setSpeed(s);
+                      sendControl({ action: 'SET_SPEED', speed: s });
+                    }}
+                  >
+                    {s}x
+                  </button>
+                );
+              })}
             </div>
 
             {/* Prediction Horizon */}
@@ -422,9 +438,9 @@ export default function LiveDashboard({
 
           {/* Status Badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div className="radar-dot" style={{ backgroundColor: isPlaying ? '#00FF88' : '#FFB800' }} />
-            <span className="mono" style={{ fontSize: '0.8rem', fontWeight: '700', color: isPlaying ? '#00FF88' : '#FFB800' }}>
-              {isPlaying ? 'SIMULATION STREAMING LIVE' : 'SIMULATION PAUSED'}
+            <div className="radar-dot" style={{ backgroundColor: isCompleted ? '#00FF88' : isPlaying ? '#00FF88' : '#FFB800' }} />
+            <span className="mono" style={{ fontSize: '0.8rem', fontWeight: '700', color: isCompleted ? '#00FF88' : isPlaying ? '#00FF88' : '#FFB800' }}>
+              {isCompleted ? 'SIMULATION COMPLETE (100%)' : isPlaying ? 'SIMULATION STREAMING LIVE' : 'SIMULATION PAUSED'}
             </span>
           </div>
 
@@ -440,11 +456,62 @@ export default function LiveDashboard({
             <div style={{ 
               width: `${progressPct}%`, 
               height: '100%', 
-              background: 'linear-gradient(90deg, #00F0FF, #FF0055)',
+              background: isCompleted ? '#00FF88' : 'linear-gradient(90deg, #00F0FF, #FF0055)',
               transition: 'width 0.1s linear'
             }} />
           </div>
         </div>
+
+        {/* Completed Executive Summary Callout (Only appears once completed) */}
+        {isCompleted && (
+          <div style={{
+            marginTop: '14px',
+            padding: '14px 18px',
+            borderRadius: '8px',
+            background: 'rgba(0, 255, 136, 0.08)',
+            border: '1px solid rgba(0, 255, 136, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircle2 size={24} color="#00FF88" />
+              <div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#00FF88' }}>
+                  Telemetry Run Complete: 100% of Events Analyzed
+                </div>
+                <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                  Processed all {totalEvents.toLocaleString()} sequential flows. Model telemetry and forecasting state are preserved above.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button 
+                className="btn-primary"
+                onClick={() => {
+                  sendControl({ action: 'RESET' });
+                  setTimeout(() => sendControl({ action: 'PLAY' }), 80);
+                }}
+                style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+              >
+                <RotateCcw size={14} />
+                <span>Replay from Start</span>
+              </button>
+
+              <button 
+                className="btn-secondary"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+              >
+                <Upload size={14} />
+                <span>Upload Another Capture</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ================= STEP 3: REAL-TIME AI WORLD MODEL FORECASTING HUD ================= */}
