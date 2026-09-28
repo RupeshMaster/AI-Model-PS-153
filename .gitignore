@@ -13,4 +13,4 @@ graphify-out/
 .graphify_*
 
 # Streamlit
-.streamlit/
+.streamlit/secrets.toml
