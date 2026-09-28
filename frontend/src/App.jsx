@@ -15,6 +15,7 @@ export default function App() {
   const [speed, setSpeed] = useState(1.0);
   const [kSteps, setKSteps] = useState(4);
   const [uploading, setUploading] = useState(false);
+  const [uploadNotification, setUploadNotification] = useState(null);
   const [sampleDatasets, setSampleDatasets] = useState([]);
 
   const wsRef = useRef(null);
@@ -37,6 +38,9 @@ export default function App() {
         try {
           const data = JSON.parse(event.data);
           setCurrentFrame(data);
+          if (typeof data.is_playing === 'boolean') {
+            setIsPlaying(data.is_playing);
+          }
         } catch (err) {
           console.error('[AEGIS WS] Error parsing frame:', err);
         }
@@ -81,11 +85,17 @@ export default function App() {
   };
 
   // Upload CSV Telemetry (up to 500MB)
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleFileUpload = async (fileOrEvent) => {
+    let file = null;
+    if (fileOrEvent?.target?.files) {
+      file = fileOrEvent.target.files[0];
+    } else if (fileOrEvent instanceof File) {
+      file = fileOrEvent;
+    }
     if (!file) return;
 
     setUploading(true);
+    setUploadNotification({ type: 'info', message: `Uploading and ingesting ${file.name} (${(file.size / (1024*1024)).toFixed(1)} MB)...` });
     const formData = new FormData();
     formData.append('file', file);
 
@@ -96,13 +106,22 @@ export default function App() {
       });
       const data = await res.json();
       if (data.status === 'success') {
-        alert(`Successfully ingested ${data.total_events} network telemetry events from ${data.source}!`);
+        setUploadNotification({
+          type: 'success',
+          message: `Successfully ingested ${data.total_events} events from ${data.source}! Ready to simulate. Click START SIMULATION.`
+        });
         sendControl({ action: 'RESET' });
       } else {
-        alert(`Error uploading file: ${data.message || 'Unknown error'}`);
+        setUploadNotification({
+          type: 'error',
+          message: `Upload error: ${data.message || 'Unknown server error'}`
+        });
       }
     } catch (err) {
-      alert(`Network upload error: ${err.message}`);
+      setUploadNotification({
+        type: 'error',
+        message: `Network error during upload: ${err.message}`
+      });
     } finally {
       setUploading(false);
     }
@@ -110,6 +129,8 @@ export default function App() {
 
   // Quick-load sample dataset from server
   const loadSampleDataset = async (filename) => {
+    setUploading(true);
+    setUploadNotification({ type: 'info', message: `Loading sample dataset: ${filename}...` });
     const formData = new FormData();
     formData.append('filename', filename);
 
@@ -120,10 +141,19 @@ export default function App() {
       });
       const data = await res.json();
       if (data.status === 'success') {
+        setUploadNotification({
+          type: 'success',
+          message: `Ingested ${data.total_events} events from ${data.source}. Ready to simulate!`
+        });
         sendControl({ action: 'RESET' });
       }
     } catch (err) {
-      console.error("Error loading sample dataset:", err);
+      setUploadNotification({
+        type: 'error',
+        message: `Error loading sample: ${err.message}`
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -146,6 +176,7 @@ export default function App() {
             isPlaying={isPlaying}
             sendControl={sendControl}
             uploading={uploading}
+            uploadNotification={uploadNotification}
             handleFileUpload={handleFileUpload}
             kSteps={kSteps}
             setKSteps={setKSteps}

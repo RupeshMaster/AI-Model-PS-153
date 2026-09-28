@@ -208,6 +208,11 @@ async def websocket_telemetry_stream(websocket: WebSocket):
     print("[WEBSOCKET] Client connected to live telemetry stream.")
 
     try:
+        # Immediately send current state snapshot so the UI is active upon connect
+        snapshot = engine.peek_frame()
+        if snapshot:
+            await websocket.send_json(snapshot)
+
         while True:
             # Check for incoming client control messages without blocking
             try:
@@ -228,6 +233,9 @@ async def websocket_telemetry_stream(websocket: WebSocket):
                         await websocket.send_json(frame)
                 elif action == "RESET":
                     engine.reset_stream()
+                    snapshot = engine.peek_frame()
+                    if snapshot:
+                        await websocket.send_json(snapshot)
             except asyncio.TimeoutError:
                 pass
 
@@ -235,7 +243,11 @@ async def websocket_telemetry_stream(websocket: WebSocket):
             if engine.is_playing:
                 frame = engine.next_frame()
                 if frame:
-                    await websocket.send_json(frame)
+                    try:
+                        await websocket.send_json(frame)
+                    except Exception as err:
+                        print(f"[WEBSOCKET] Send error: {err}")
+                        break
                 # Compute delay based on speed
                 delay = max(0.015, engine.step_delay / engine.speed)
                 await asyncio.sleep(delay)
@@ -245,7 +257,7 @@ async def websocket_telemetry_stream(websocket: WebSocket):
     except WebSocketDisconnect:
         print("[WEBSOCKET] Client disconnected.")
     except Exception as e:
-        print(f"[WEBSOCKET] Error: {e}")
+        print(f"[WEBSOCKET] Unexpected Error: {e}")
 
 if __name__ == "__main__":
     # pyrefly: ignore [missing-import]

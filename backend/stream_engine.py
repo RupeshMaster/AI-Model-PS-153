@@ -127,6 +127,7 @@ class TelemetryStreamEngine:
             self.X_scaled = (X_raw - X_raw.min(axis=0)) / denom
 
             self.total_events = len(self.X_scaled)
+            self.source_name = source_name
             self.current_index = 0
             self.flagged_flows = []
             self.history_risks = []
@@ -143,9 +144,17 @@ class TelemetryStreamEngine:
             print(f"[STREAM ENGINE] Error loading dataset: {e}")
             return {"status": "error", "message": str(e)}
 
+    def peek_frame(self) -> Optional[Dict[str, Any]]:
+        """Computes current frame without advancing index (useful on connect)."""
+        return self._compute_frame(advance=False)
+
     def next_frame(self) -> Optional[Dict[str, Any]]:
+        """Advances the simulation stream by 1 step and computes frame."""
+        return self._compute_frame(advance=True)
+
+    def _compute_frame(self, advance: bool = True) -> Optional[Dict[str, Any]]:
         """
-        Advances the simulation stream by 1 step, executing:
+        Executes:
           1. Step T inference (Infiltration, MITRE Stage, Attention)
           2. Top 5 gradient attribution (Explainability)
           3. K-Step Autoregressive Forward Rollout (Future Predictions)
@@ -201,27 +210,32 @@ class TelemetryStreamEngine:
         attack_meta = ATTACK_CLASS_MAP.get(pred_class_idx, ATTACK_CLASS_MAP[0])
 
         current_label = self.labels[idx + self.seq_length - 1] if self.labels is not None else "Unknown"
-        self.history_risks.append(round(inf_prob, 2))
-        if len(self.history_risks) > 100:
-            self.history_risks.pop(0)
 
-        # Track flagged anomaly flow
-        if inf_prob >= 35.0 or pred_phase_idx > 0:
-            flagged_item = {
-                "id": f"FL-{idx + self.seq_length}",
-                "event_index": idx + self.seq_length,
-                "timestamp": time.strftime("%H:%M:%S"),
-                "ground_truth_label": str(current_label),
-                "predicted_attack": attack_meta["name"],
-                "mitre_id": attack_meta["mitre_id"],
-                "mitre_phase": phase_meta["name"],
-                "severity": phase_meta["severity"],
-                "infiltration_risk": round(inf_prob, 2),
-                "key_anomaly": top_features[0]["feature"] if top_features else "Anomalous Flow"
-            }
-            self.flagged_flows.insert(0, flagged_item)
-            if len(self.flagged_flows) > 50:
-                self.flagged_flows.pop()
+        if advance:
+            self.history_risks.append(round(inf_prob, 2))
+            if len(self.history_risks) > 100:
+                self.history_risks.pop(0)
+
+            # Track flagged anomaly flow
+            if inf_prob >= 35.0 or pred_phase_idx > 0:
+                flagged_item = {
+                    "id": f"FL-{idx + self.seq_length}",
+                    "event_index": idx + self.seq_length,
+                    "timestamp": time.strftime("%H:%M:%S"),
+                    "ground_truth_label": str(current_label),
+                    "predicted_attack": attack_meta["name"],
+                    "mitre_id": attack_meta["mitre_id"],
+                    "mitre_phase": phase_meta["name"],
+                    "severity": phase_meta["severity"],
+                    "infiltration_risk": round(inf_prob, 2),
+                    "key_anomaly": top_features[0]["feature"] if top_features else "Anomalous Flow"
+                }
+                self.flagged_flows.insert(0, flagged_item)
+                if len(self.flagged_flows) > 50:
+                    self.flagged_flows.pop()
+
+            # Advance stream pointer
+            self.current_index += 1
 
         # DEFCON Status Calculation
         if inf_prob >= 75.0 or pred_phase_idx in [3, 4, 5]:
@@ -238,6 +252,10 @@ class TelemetryStreamEngine:
             defcon_color = "#00FF66"
 
         frame = {
+            "source_name": getattr(self, "source_name", "telemetry.csv"),
+            "is_playing": self.is_playing,
+            "speed": self.speed,
+            "k_steps": self.k_steps,
             "event_index": idx + self.seq_length,
             "total_events": self.total_events,
             "timestamp": time.strftime("%H:%M:%S"),
@@ -261,15 +279,26 @@ class TelemetryStreamEngine:
                 "ground_truth_label": str(current_label)
             },
             "trajectory": trajectory,
-            "history_risks": self.history_risks,
+            "history_risks": list(self.history_risks) if self.history_risks else [round(inf_prob, 2)],
             "temporal_attention": [round(float(w), 4) for w in attn_weights.detach().cpu().numpy()[0]],
             "top_features": top_features,
             "latest_flagged_flow": self.flagged_flows[0] if self.flagged_flows else None
         }
 
-        # Advance stream pointer
-        self.current_index += 1
-        return frame
+        def to_serializable(val):
+            if isinstance(val, np.ndarray):
+                return val.tolist()
+            if isinstance(val, (np.floating, float)):
+                return float(val)
+            if isinstance(val, (np.integer, int)):
+                return int(val)
+            if isinstance(val, dict):
+                return {k: to_serializable(v) for k, v in val.items()}
+            if isinstance(val, (list, tuple)):
+                return [to_serializable(v) for v in val]
+            return val
+
+        return to_serializable(frame)
 
     def set_playback(self, is_playing: bool):
         self.is_playing = is_playing

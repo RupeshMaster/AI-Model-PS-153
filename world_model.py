@@ -171,7 +171,7 @@ class NetworkWorldModel(nn.Module):
                 trajectory.append({
                     "step": step,
                     "horizon": f"T+{step}",
-                    "predicted_state": next_state_pred.cpu().numpy()[0],
+                    "predicted_state": next_state_pred.cpu().numpy()[0].tolist(),
                     "infiltration_probability": round(inf_prob, 2),
                     "predicted_phase_idx": pred_phase,
                     "phase_probabilities": phase_probs.tolist(),
