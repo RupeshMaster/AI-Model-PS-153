@@ -177,6 +177,7 @@ export default function App() {
             sendControl={sendControl}
             uploading={uploading}
             uploadNotification={uploadNotification}
+            setUploadNotification={setUploadNotification}
             handleFileUpload={handleFileUpload}
             kSteps={kSteps}
             setKSteps={setKSteps}

@@ -16,7 +16,8 @@ import {
   ArrowUpRight, 
   Cpu, 
   Sliders,
-  Radio
+  Radio,
+  X
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -48,6 +49,7 @@ export default function LiveDashboard({
   sendControl,
   uploading,
   uploadNotification,
+  setUploadNotification,
   handleFileUpload,
   kSteps,
   setKSteps,
@@ -316,13 +318,44 @@ export default function LiveDashboard({
             fontSize: '0.82rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
+            justifyContent: 'space-between',
+            gap: '12px',
             background: uploadNotification.type === 'success' ? 'rgba(0, 255, 136, 0.1)' : uploadNotification.type === 'error' ? 'rgba(255, 0, 85, 0.1)' : 'rgba(0, 240, 255, 0.1)',
             border: `1px solid ${uploadNotification.type === 'success' ? '#00FF88' : uploadNotification.type === 'error' ? '#FF0055' : 'var(--accent-cyan)'}`,
             color: uploadNotification.type === 'success' ? '#00FF88' : uploadNotification.type === 'error' ? '#FF0055' : 'var(--accent-cyan)'
           }}>
-            {uploadNotification.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-            <span>{uploadNotification.message}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {uploadNotification.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+              <span>{uploadNotification.message}</span>
+            </div>
+
+            <button
+              onClick={() => setUploadNotification && setUploadNotification(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'currentColor',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '3px 6px',
+                borderRadius: '4px',
+                opacity: 0.8,
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.8';
+                e.currentTarget.style.background = 'transparent';
+              }}
+              title="Close Notification"
+            >
+              <X size={16} />
+            </button>
           </div>
         )}
       </div>
