@@ -122,8 +122,8 @@ export default function LiveDashboard({
   };
 
   // Chart configuration: Past Trajectory + Forward Rollout Cone
-  const pastLabels = historyRisks.map((_, i) => `-${historyRisks.length - 1 - i}s`);
-  const futureLabels = trajectory.map(t => t.horizon);
+  const pastLabels = historyRisks.map((_, i) => `Past -${historyRisks.length - 1 - i}`);
+  const futureLabels = trajectory.map(t => `+${t.step} Step${t.step > 1 ? 's' : ''} Ahead`);
   const chartLabels = [...pastLabels, ...futureLabels];
 
   // Past data with nulls for future
@@ -140,7 +140,7 @@ export default function LiveDashboard({
     labels: chartLabels,
     datasets: [
       {
-        label: 'Observed Trajectory (T-W to T)',
+        label: 'Observed Risk History (Past Telemetry)',
         data: pastData,
         borderColor: '#00F0FF',
         backgroundColor: 'rgba(0, 240, 255, 0.10)',
@@ -150,7 +150,7 @@ export default function LiveDashboard({
         pointRadius: 2,
       },
       {
-        label: `Autoregressive Rollout Cone (T+1 to T+${trajectory.length})`,
+        label: `AI Future Prediction Cone (+${trajectory.length} Steps Ahead)`,
         data: futureData,
         borderColor: '#FF0055',
         backgroundColor: 'rgba(255, 0, 85, 0.18)',
@@ -410,28 +410,37 @@ export default function LiveDashboard({
               })}
             </div>
 
-            {/* Prediction Horizon */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Forecast Horizon:</span>
-              {[2, 4, 6, 8].map(k => (
-                <button
-                  key={k}
-                  className={`btn-secondary ${kSteps === k ? 'active' : ''}`}
-                  style={{ 
-                    padding: '4px 9px', 
-                    fontSize: '0.75rem', 
-                    borderColor: kSteps === k ? 'var(--accent-cyan)' : 'var(--border-subtle)',
-                    background: kSteps === k ? 'rgba(0, 240, 255, 0.15)' : 'transparent',
-                    color: kSteps === k ? 'var(--accent-cyan)' : 'var(--text-secondary)'
-                  }}
-                  onClick={() => {
-                    setKSteps(k);
-                    sendControl({ action: 'SET_HORIZON', k_steps: k });
-                  }}
-                >
-                  T+{k}
-                </button>
-              ))}
+            {/* Prediction Lookahead Depth */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="How many future network events ahead the AI simulates">
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Predict Ahead:</span>
+              {[
+                { k: 2, label: '+2 Steps' },
+                { k: 4, label: '+4 Steps' },
+                { k: 6, label: '+6 Steps' },
+                { k: 8, label: '+8 Steps' },
+              ].map(item => {
+                const isActive = kSteps === item.k;
+                return (
+                  <button
+                    key={item.k}
+                    className={`btn-secondary ${isActive ? 'active' : ''}`}
+                    style={{ 
+                      padding: '4px 9px', 
+                      fontSize: '0.75rem', 
+                      borderColor: isActive ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                      background: isActive ? 'rgba(0, 240, 255, 0.18)' : 'transparent',
+                      color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                      fontWeight: isActive ? '700' : '500'
+                    }}
+                    onClick={() => {
+                      setKSteps(item.k);
+                      sendControl({ action: 'SET_HORIZON', k_steps: item.k });
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
 
           </div>
@@ -548,8 +557,13 @@ export default function LiveDashboard({
 
           {/* Forward Horizon Prediction Cards (T+1 to T+K) */}
           <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
-              Autoregressive Forward Forecast Horizons (T+1 ... T+{trajectory.length})
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Future Steps Predicted by AI (+1 to +{trajectory.length} Steps Ahead)
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)' }}>
+                Simulating network conditions ahead of time
+              </span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${trajectory.length}, 1fr)`, gap: '10px' }}>
@@ -560,6 +574,7 @@ export default function LiveDashboard({
 
                 const isCritical = step.infiltration_probability >= 70.0;
                 const isElevated = step.infiltration_probability >= 35.0;
+                const readableStepName = step.step === 1 ? 'Next Flow (+1)' : `+${step.step} Flows Ahead`;
 
                 return (
                   <div 
@@ -574,7 +589,7 @@ export default function LiveDashboard({
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', fontWeight: '700' }}>
-                        {step.horizon}
+                        {readableStepName}
                       </span>
                       <span className="mono" style={{ fontSize: '0.72rem', color: delta > 0 ? '#FF0055' : '#00FF88', fontWeight: '600' }}>
                         {delta >= 0 ? `+${delta.toFixed(1)}%` : `${delta.toFixed(1)}%`}
@@ -586,7 +601,7 @@ export default function LiveDashboard({
                     </div>
 
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                      MITRE Stage {step.predicted_phase_idx}
+                      Predicted MITRE Stage {step.predicted_phase_idx}
                     </div>
                   </div>
                 );

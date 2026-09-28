@@ -198,13 +198,13 @@ export default function BenchmarkLab({ currentFrame }) {
         {/* Early Warning Advantage */}
         <div className="glass-panel" style={{ padding: '18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--accent-crimson)', textTransform: 'uppercase', fontWeight: '700' }}>
-            <Clock size={14} /> FORECAST LEAD-TIME
+            <Clock size={14} /> PRE-BREACH PREDICTION LEAD-TIME
           </div>
           <div className="mono" style={{ fontSize: '1.5rem', fontWeight: '800', color: '#FFFFFF', margin: '6px 0' }}>
-            T+1 to T+4
+            +1 to +4 Steps Ahead
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            Baseline: <span className="mono" style={{ color: '#FFB800' }}>Reactive Only (T=0)</span>
+            Baseline: <span className="mono" style={{ color: '#FFB800' }}>Reactive Only (0 Steps Ahead)</span>
           </div>
         </div>
 
@@ -242,9 +242,9 @@ export default function BenchmarkLab({ currentFrame }) {
                 <td className="mono" style={{ padding: '12px', textAlign: 'center', color: 'var(--accent-cyan)', fontWeight: '700' }}>MSE 0.0217 (Trained Dynamics)</td>
               </tr>
               <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
-                <td style={{ padding: '12px', fontWeight: '600' }}>K-Step Autoregressive Forward Rollout</td>
+                <td style={{ padding: '12px', fontWeight: '600' }}>Future Threat Prediction Horizon</td>
                 <td className="mono" style={{ padding: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>Unsupported</td>
-                <td className="mono" style={{ padding: '12px', textAlign: 'center', color: '#00FF88', fontWeight: '700' }}>T+1 to T+4 Rollout Cone</td>
+                <td className="mono" style={{ padding: '12px', textAlign: 'center', color: '#00FF88', fontWeight: '700' }}>+1 to +4 Steps Ahead (Rollout)</td>
               </tr>
               <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
                 <td style={{ padding: '12px', fontWeight: '600' }}>Explainability Mechanism</td>
