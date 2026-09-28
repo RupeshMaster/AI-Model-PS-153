@@ -1,13 +1,44 @@
 {
-    "Architecture": "LSTM (Long Short-Term Memory)",
+    "Model Name": "NetworkWorldModel",
+    "Problem Statement": "NTRO 26153 - AI based Network Attack Forecasting",
+    "Architecture": "Temporal LSTM with Multi-Head Temporal Attention and State Dynamics",
     "Input Features": 78,
     "Hidden State Size": 128,
     "Layers": 2,
-    "Output Classes": 16,
+    "Dropout": 0.2,
+    "Dynamics Transition Head": {
+        "Formula": "P(S_{t+1} | S_t)",
+        "Output Dimension": 78,
+        "Loss": "Mean Squared Error (MSE)"
+    },
+    "Infiltration Risk Head": {
+        "Output": "Binary Probability [0.0, 1.0]",
+        "Loss": "BCEWithLogitsLoss"
+    },
+    "MITRE ATT&CK Phase Head": {
+        "Phases": 6,
+        "Stages": [
+            "0: Benign / Normal",
+            "1: Reconnaissance",
+            "2: Initial Access",
+            "3: Lateral Movement / Infiltration",
+            "4: Command and Control (C2)",
+            "5: Exfiltration & Impact"
+        ],
+        "Loss": "CrossEntropyLoss"
+    },
+    "Attack Classification Head": {
+        "Classes": 16,
+        "Loss": "CrossEntropyLoss"
+    },
+    "Autoregressive Forward Simulation": {
+        "Method": "forward_rollout",
+        "Default Horizon": "K = 4 steps (T+1, T+2, T+3, T+4)",
+        "State Feedback": "Bounded [0.0, 1.0] sliding window update"
+    },
+    "Explainability": "Temporal Attention Weights + Input Attribution Gradients",
     "Sequence Length": 10,
-    "Batch Size": 1024,
-    "Loss Function": "CrossEntropyLoss",
-    "Optimizer": "Adam",
-    "Learning Rate": 0.001,
-    "Evaluation Dataset": "Cleaned_Data/clean_02-14-2018.csv"
+    "Batch Size": 256,
+    "Optimizer": "AdamW",
+    "Learning Rate": 0.001
 }
