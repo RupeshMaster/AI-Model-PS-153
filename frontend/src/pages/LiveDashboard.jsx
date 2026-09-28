@@ -1,26 +1,21 @@
 import React, { useRef, useState } from 'react';
-import { 
-  Play, 
-  Pause, 
-  SkipForward, 
-  RotateCcw, 
-  Upload, 
-  FileText, 
-  AlertTriangle, 
-  ShieldCheck, 
-  Zap, 
-  Activity, 
-  Clock, 
-  Server, 
-  CheckCircle2, 
-  ArrowUpRight, 
-  Cpu, 
-  Sliders,
-  Radio,
-  X,
-  Rewind,
-  FastForward
-} from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faPlay,
+  faPause,
+  faForwardStep,
+  faRotateLeft,
+  faUpload,
+  faTriangleExclamation,
+  faShieldHalved,
+  faBolt,
+  faClock,
+  faCircleCheck,
+  faMicrochip,
+  faXmark,
+  faBackward,
+  faForward
+} from '@fortawesome/free-solid-svg-icons';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -266,7 +261,7 @@ export default function LiveDashboard({
               justifyContent: 'center',
               color: 'var(--accent-cyan)'
             }}>
-              <Upload size={22} />
+              <FontAwesomeIcon icon={faUpload} style={{ fontSize: '18px' }} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -293,9 +288,9 @@ export default function LiveDashboard({
               className="btn-primary"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              style={{ padding: '10px 18px', fontSize: '0.85rem' }}
+              style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <Upload size={16} />
+              <FontAwesomeIcon icon={faUpload} style={{ fontSize: '14px' }} />
               <span>{uploading ? 'Ingesting (500MB max)...' : 'Choose CSV File to Upload'}</span>
             </button>
           </div>
@@ -357,7 +352,11 @@ export default function LiveDashboard({
             color: uploadNotification.type === 'success' ? '#00FF88' : uploadNotification.type === 'error' ? '#FF0055' : 'var(--accent-cyan)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {uploadNotification.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+              {uploadNotification.type === 'success' ? (
+                <FontAwesomeIcon icon={faCircleCheck} style={{ fontSize: '15px' }} />
+              ) : (
+                <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize: '15px' }} />
+              )}
               <span>{uploadNotification.message}</span>
             </div>
 
@@ -386,7 +385,7 @@ export default function LiveDashboard({
               }}
               title="Close Notification"
             >
-              <X size={16} />
+              <FontAwesomeIcon icon={faXmark} style={{ fontSize: '15px' }} />
             </button>
           </div>
         )}
@@ -414,12 +413,21 @@ export default function LiveDashboard({
                 padding: '10px 22px', 
                 fontSize: '0.95rem', 
                 fontWeight: '800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
                 borderColor: isCompleted ? '#00FF88' : undefined,
                 color: isCompleted ? '#00FF88' : undefined,
                 boxShadow: isCompleted ? '0 0 20px rgba(0, 255, 136, 0.4)' : isPlaying ? '0 0 20px rgba(255, 0, 85, 0.4)' : '0 0 20px rgba(0, 240, 255, 0.4)'
               }}
             >
-              {isCompleted ? <RotateCcw size={18} /> : isPlaying ? <Pause size={18} /> : <Play size={18} />}
+              {isCompleted ? (
+                <FontAwesomeIcon icon={faRotateLeft} style={{ fontSize: '16px' }} />
+              ) : isPlaying ? (
+                <FontAwesomeIcon icon={faPause} style={{ fontSize: '16px' }} />
+              ) : (
+                <FontAwesomeIcon icon={faPlay} style={{ fontSize: '16px' }} />
+              )}
               <span>{isCompleted ? 'REPLAY SIMULATION' : isPlaying ? 'PAUSE SIMULATION' : 'START SIMULATION'}</span>
             </button>
 
@@ -428,8 +436,9 @@ export default function LiveDashboard({
               onClick={() => sendControl({ action: 'STEP' })}
               title="Advance 1 Sequence Window (W=10)"
               disabled={isCompleted}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <SkipForward size={16} />
+              <FontAwesomeIcon icon={faForwardStep} style={{ fontSize: '14px' }} />
               <span>Step (+1)</span>
             </button>
 
@@ -437,8 +446,9 @@ export default function LiveDashboard({
               className="btn-secondary"
               onClick={() => sendControl({ action: 'RESET' })}
               title="Reset Simulation to Event 0"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <RotateCcw size={16} />
+              <FontAwesomeIcon icon={faRotateLeft} style={{ fontSize: '14px' }} />
               <span>Reset</span>
             </button>
           </div>
@@ -551,7 +561,7 @@ export default function LiveDashboard({
             gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CheckCircle2 size={24} color="#00FF88" />
+              <FontAwesomeIcon icon={faCircleCheck} style={{ fontSize: '22px', color: '#00FF88' }} />
               <div>
                 <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#00FF88' }}>
                   Telemetry Run Complete: 100% of Events Analyzed
@@ -569,18 +579,18 @@ export default function LiveDashboard({
                   sendControl({ action: 'RESET' });
                   setTimeout(() => sendControl({ action: 'PLAY' }), 80);
                 }}
-                style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+                style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <RotateCcw size={14} />
+                <FontAwesomeIcon icon={faRotateLeft} style={{ fontSize: '13px' }} />
                 <span>Replay from Start</span>
               </button>
 
               <button 
                 className="btn-secondary"
                 onClick={() => fileInputRef.current?.click()}
-                style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+                style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Upload size={14} />
+                <FontAwesomeIcon icon={faUpload} style={{ fontSize: '13px' }} />
                 <span>Upload Another Capture</span>
               </button>
             </div>
@@ -679,7 +689,7 @@ export default function LiveDashboard({
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Clock size={15} color="var(--accent-cyan)" />
+                <FontAwesomeIcon icon={faClock} style={{ fontSize: '14px', color: 'var(--accent-cyan)' }} />
                 <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                   Interactive Timeline Scrubber
                 </span>
@@ -697,7 +707,7 @@ export default function LiveDashboard({
                   title="Inspect the starting phase baseline graph (Event 10)"
                   style={{ padding: '4px 10px', fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  <Rewind size={13} color="#00F0FF" />
+                  <FontAwesomeIcon icon={faBackward} style={{ fontSize: '12px', color: '#00F0FF' }} />
                   <span>Jump to Start (Event 10)</span>
                 </button>
 
@@ -709,7 +719,7 @@ export default function LiveDashboard({
                     title={`Inspect attack onset at Event ${firstThreatEvent}`}
                     style={{ padding: '4px 10px', fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'rgba(255, 184, 0, 0.5)', color: '#FFB800' }}
                   >
-                    <AlertTriangle size={13} color="#FFB800" />
+                    <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize: '12px', color: '#FFB800' }} />
                     <span>Attack Onset (Evt {firstThreatEvent})</span>
                   </button>
                 )}
@@ -721,7 +731,7 @@ export default function LiveDashboard({
                   title="Inspect completed final state"
                   style={{ padding: '4px 10px', fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
-                  <FastForward size={13} color="#00FF88" />
+                  <FontAwesomeIcon icon={faForward} style={{ fontSize: '12px', color: '#00FF88' }} />
                   <span>Jump to Final Event</span>
                 </button>
               </div>
@@ -901,7 +911,7 @@ export default function LiveDashboard({
             <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: '700', color: 'var(--accent-amber)' }}>
-                  <Zap size={14} /> DEFENDER MITIGATION PLAYBOOK
+                  <FontAwesomeIcon icon={faBolt} style={{ fontSize: '13px' }} /> DEFENDER MITIGATION PLAYBOOK
                 </div>
                 {actionDeployed && (
                   <span className="badge badge-emerald" style={{ fontSize: '0.65rem' }}>DEPLOYED</span>
@@ -915,9 +925,9 @@ export default function LiveDashboard({
               <button 
                 className="btn-secondary"
                 onClick={() => setActionDeployed(true)}
-                style={{ width: '100%', fontSize: '0.78rem', padding: '8px', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)' }}
+                style={{ width: '100%', fontSize: '0.78rem', padding: '8px', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                <ShieldCheck size={14} />
+                <FontAwesomeIcon icon={faShieldHalved} style={{ fontSize: '13px' }} />
                 <span>{actionDeployed ? 'Automated Firewall Rule Active' : 'Execute Containment Playbook'}</span>
               </button>
             </div>
@@ -926,7 +936,7 @@ export default function LiveDashboard({
           {/* Explainable AI (XAI) Feature Attribution (Top 5 Saliency Gradients) */}
           <div className="glass-panel" style={{ padding: '18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Cpu size={16} color="var(--accent-cyan)" />
+              <FontAwesomeIcon icon={faMicrochip} style={{ fontSize: '15px', color: 'var(--accent-cyan)' }} />
               <h3 style={{ fontSize: '0.88rem', fontWeight: '700' }}>XAI Saliency Feature Attribution</h3>
             </div>
             

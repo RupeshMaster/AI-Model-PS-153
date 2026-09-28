@@ -1,22 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  BarChart3, 
-  TrendingUp, 
-  CheckCircle, 
-  AlertOctagon, 
-  Award, 
-  Clock, 
-  Download, 
-  FileText, 
-  Eye, 
-  Layers, 
-  Table as TableIcon,
-  Search,
-  Activity,
-  Info,
-  ShieldCheck,
-  Maximize2
-} from 'lucide-react';
+  faChartColumn, 
+  faDownload, 
+  faFileLines, 
+  faClock, 
+  faEye, 
+  faLayerGroup, 
+  faTable, 
+  faMagnifyingGlass 
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function BenchmarkLab({ currentFrame }) {
   const [benchmarkData, setBenchmarkData] = useState(null);
@@ -89,7 +82,7 @@ export default function BenchmarkLab({ currentFrame }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <BarChart3 size={24} color="var(--accent-cyan)" />
+              <FontAwesomeIcon icon={faChartColumn} style={{ fontSize: '20px', color: 'var(--accent-cyan)' }} />
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800' }}>Evaluation Benchmarks & Baseline Comparison Lab</h2>
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -103,10 +96,10 @@ export default function BenchmarkLab({ currentFrame }) {
               href="http://localhost:8000/api/confusion-matrix/download" 
               download="world_model_confusion_matrix.png"
               className="btn-primary"
-              style={{ padding: '9px 16px', fontSize: '0.82rem', textDecoration: 'none' }}
+              style={{ padding: '9px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
               title="Download High-Resolution (300 DPI) Confusion Matrix Image"
             >
-              <Download size={15} />
+              <FontAwesomeIcon icon={faDownload} style={{ fontSize: '14px' }} />
               <span>Download Confusion Matrix PNG</span>
             </a>
 
@@ -114,10 +107,10 @@ export default function BenchmarkLab({ currentFrame }) {
               href="http://localhost:8000/api/benchmark/download-report" 
               download="model_performance_report.md"
               className="btn-secondary"
-              style={{ padding: '9px 16px', fontSize: '0.82rem', textDecoration: 'none' }}
+              style={{ padding: '9px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
               title="Download Full Markdown Benchmark Report"
             >
-              <FileText size={15} />
+              <FontAwesomeIcon icon={faFileLines} style={{ fontSize: '14px' }} />
               <span>Download Report (MD)</span>
             </a>
           </div>
@@ -198,7 +191,7 @@ export default function BenchmarkLab({ currentFrame }) {
         {/* Early Warning Advantage */}
         <div className="glass-panel" style={{ padding: '18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--accent-crimson)', textTransform: 'uppercase', fontWeight: '700' }}>
-            <Clock size={14} /> PRE-BREACH PREDICTION LEAD-TIME
+            <FontAwesomeIcon icon={faClock} style={{ fontSize: '13px' }} /> PRE-BREACH PREDICTION LEAD-TIME
           </div>
           <div className="mono" style={{ fontSize: '1.5rem', fontWeight: '800', color: '#FFFFFF', margin: '6px 0' }}>
             +1 to +4 Steps Ahead
@@ -292,27 +285,27 @@ export default function BenchmarkLab({ currentFrame }) {
               <button
                 className={`btn-secondary ${activeView === 'heatmap' ? 'active' : ''}`}
                 onClick={() => setActiveView('heatmap')}
-                style={{ padding: '4px 10px', fontSize: '0.72rem', borderColor: activeView === 'heatmap' ? 'var(--accent-cyan)' : 'transparent' }}
+                style={{ padding: '4px 10px', fontSize: '0.72rem', borderColor: activeView === 'heatmap' ? 'var(--accent-cyan)' : 'transparent', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                <Eye size={12} />
+                <FontAwesomeIcon icon={faEye} style={{ fontSize: '11px' }} />
                 <span>Visual Plot</span>
               </button>
 
               <button
                 className={`btn-secondary ${activeView === 'grid' ? 'active' : ''}`}
                 onClick={() => setActiveView('grid')}
-                style={{ padding: '4px 10px', fontSize: '0.72rem', borderColor: activeView === 'grid' ? 'var(--accent-cyan)' : 'transparent' }}
+                style={{ padding: '4px 10px', fontSize: '0.72rem', borderColor: activeView === 'grid' ? 'var(--accent-cyan)' : 'transparent', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                <Layers size={12} />
+                <FontAwesomeIcon icon={faLayerGroup} style={{ fontSize: '11px' }} />
                 <span>Interactive Grid</span>
               </button>
 
               <button
                 className={`btn-secondary ${activeView === 'table' ? 'active' : ''}`}
                 onClick={() => setActiveView('table')}
-                style={{ padding: '4px 10px', fontSize: '0.72rem', borderColor: activeView === 'table' ? 'var(--accent-cyan)' : 'transparent' }}
+                style={{ padding: '4px 10px', fontSize: '0.72rem', borderColor: activeView === 'table' ? 'var(--accent-cyan)' : 'transparent', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                <TableIcon size={12} />
+                <FontAwesomeIcon icon={faTable} style={{ fontSize: '11px' }} />
                 <span>Class Metrics</span>
               </button>
             </div>
@@ -354,9 +347,9 @@ export default function BenchmarkLab({ currentFrame }) {
                   href="http://localhost:8000/api/confusion-matrix/download" 
                   download="world_model_confusion_matrix.png"
                   className="btn-secondary"
-                  style={{ padding: '6px 12px', fontSize: '0.75rem', textDecoration: 'none' }}
+                  style={{ padding: '6px 12px', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
                 >
-                  <Download size={13} />
+                  <FontAwesomeIcon icon={faDownload} style={{ fontSize: '12px' }} />
                   <span>Download Image (PNG)</span>
                 </a>
               </div>
@@ -475,7 +468,7 @@ export default function BenchmarkLab({ currentFrame }) {
           {activeView === 'table' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Search size={14} color="var(--text-muted)" />
+                <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: '13px', color: 'var(--text-muted)' }} />
                 <input 
                   type="text"
                   placeholder="Filter by attack name..."

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { FileText, Download, CheckCircle, ShieldAlert, Printer, AlertTriangle } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFileLines, faDownload } from '@fortawesome/free-solid-svg-icons';
 
 export default function IncidentReports({ currentFrame }) {
   const [downloaded, setDownloaded] = useState(false);
@@ -19,7 +20,7 @@ export default function IncidentReports({ currentFrame }) {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `AEGIS_INCIDENT_REPORT_${Date.now()}.json`);
+        downloadAnchor.setAttribute("download", `QC_WORLD_MODEL_INCIDENT_REPORT_${Date.now()}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
@@ -36,7 +37,7 @@ export default function IncidentReports({ currentFrame }) {
       <div className="glass-panel" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-            <FileText size={22} color="var(--accent-cyan)" />
+            <FontAwesomeIcon icon={faFileLines} style={{ fontSize: '20px', color: 'var(--accent-cyan)' }} />
             <h2 style={{ fontSize: '1.25rem', fontWeight: '800' }}>Automated SOC Incident & Forensic Report</h2>
           </div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -49,7 +50,7 @@ export default function IncidentReports({ currentFrame }) {
             onClick={handleDownload}
             className="btn-primary"
           >
-            <Download size={16} />
+            <FontAwesomeIcon icon={faDownload} style={{ fontSize: '14px' }} />
             <span>{downloaded ? 'Report Downloaded!' : 'Export Incident JSON'}</span>
           </button>
         </div>
@@ -71,7 +72,7 @@ export default function IncidentReports({ currentFrame }) {
           <div style={{ textAlign: 'right' }}>
             <span className="badge badge-critical" style={{ fontSize: '0.85rem' }}>OFFICIAL DEFENSE REPORT</span>
             <div className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-              REF: AEGIS-WM-2026-PS153
+              REF: QC-WM-2026-PS153
             </div>
           </div>
         </div>

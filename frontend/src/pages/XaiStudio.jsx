@@ -1,5 +1,6 @@
 import React from 'react';
-import { Cpu, Zap, Activity, Info, BarChart2 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMicrochip } from '@fortawesome/free-solid-svg-icons';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -95,7 +96,7 @@ export default function XaiStudio({ currentFrame }) {
       {/* Header */}
       <div className="glass-panel" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <Cpu size={22} color="var(--accent-cyan)" />
+          <FontAwesomeIcon icon={faMicrochip} style={{ fontSize: '20px', color: 'var(--accent-cyan)' }} />
           <h2 style={{ fontSize: '1.25rem', fontWeight: '800' }}>Explainable AI (XAI) & Attention Studio</h2>
         </div>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>

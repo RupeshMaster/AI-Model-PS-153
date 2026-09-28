@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Filter, ShieldAlert, ArrowDownUp, Download, Eye } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faMagnifyingGlass, faEye, faXmark } from '@fortawesome/free-solid-svg-icons';
 
 export default function FlowInspector({ currentFrame }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,7 +10,7 @@ export default function FlowInspector({ currentFrame }) {
   // In production, stream engine tracks historical flagged flows
   const latestFlagged = currentFrame?.latest_flagged_flow;
   
-  // Dummy demo flows combined with incoming stream
+  // Demo baseline flows combined with incoming stream
   const baseFlows = [
     {
       id: 'FL-2849',
@@ -88,7 +89,7 @@ export default function FlowInspector({ currentFrame }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Search */}
           <div style={{ position: 'relative' }}>
-            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '14px' }} />
             <input 
               type="text"
               placeholder="Search attack, MITRE ID, anomaly..."
@@ -177,9 +178,9 @@ export default function FlowInspector({ currentFrame }) {
                   <button 
                     onClick={() => setSelectedFlow(flow)}
                     className="btn-secondary" 
-                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                    style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}
                   >
-                    <Eye size={12} /> Inspect
+                    <FontAwesomeIcon icon={faEye} style={{ fontSize: '12px' }} /> Inspect
                   </button>
                 </td>
               </tr>
@@ -214,9 +215,9 @@ export default function FlowInspector({ currentFrame }) {
               <button 
                 onClick={() => setSelectedFlow(null)}
                 className="btn-secondary"
-                style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                style={{ padding: '4px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                ✕ Close
+                <FontAwesomeIcon icon={faXmark} /> Close
               </button>
             </div>
 

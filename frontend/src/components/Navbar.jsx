@@ -1,5 +1,15 @@
 import React from 'react';
-import { ShieldAlert, Activity, Radio, Cpu, FileText, BarChart3, Search, Crosshair } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faShieldHalved, 
+  faWaveSquare, 
+  faCrosshairs, 
+  faMagnifyingGlass, 
+  faMicrochip, 
+  faChartColumn, 
+  faFileLines, 
+  faTowerBroadcast 
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function Navbar({ activeTab, setActiveTab, currentFrame, connectionStatus }) {
   const defcon = currentFrame?.defcon || {
@@ -9,12 +19,12 @@ export default function Navbar({ activeTab, setActiveTab, currentFrame, connecti
   };
 
   const navItems = [
-    { id: 'dashboard', label: 'Live Operations', icon: Activity },
-    { id: 'mitre', label: 'MITRE Kill Chain', icon: Crosshair },
-    { id: 'inspector', label: 'Traffic Inspector', icon: Search },
-    { id: 'xai', label: 'XAI Attention Studio', icon: Cpu },
-    { id: 'benchmarks', label: 'Benchmark Lab', icon: BarChart3 },
-    { id: 'reports', label: 'Incident Reports', icon: FileText },
+    { id: 'dashboard', label: 'Live Operations', icon: faWaveSquare },
+    { id: 'mitre', label: 'MITRE Kill Chain', icon: faCrosshairs },
+    { id: 'inspector', label: 'Traffic Inspector', icon: faMagnifyingGlass },
+    { id: 'xai', label: 'XAI Attention Studio', icon: faMicrochip },
+    { id: 'benchmarks', label: 'Benchmark Lab', icon: faChartColumn },
+    { id: 'reports', label: 'Incident Reports', icon: faFileLines },
   ];
 
   return (
@@ -24,12 +34,12 @@ export default function Navbar({ activeTab, setActiveTab, currentFrame, connecti
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(157, 0, 255, 0.2))', border: '1px solid var(--border-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ShieldAlert size={24} color="#00F0FF" />
+            <FontAwesomeIcon icon={faShieldHalved} style={{ fontSize: '20px', color: '#00F0FF' }} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em', background: 'linear-gradient(90deg, #FFFFFF 0%, #A2BEE5 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                AEGIS // WORLD MODEL
+                QC // WORLD MODEL
               </h1>
               <span className="badge badge-cyan" style={{ fontSize: '0.65rem' }}>NTRO PS-26153</span>
             </div>
@@ -62,7 +72,7 @@ export default function Navbar({ activeTab, setActiveTab, currentFrame, connecti
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', fontSize: '0.75rem' }}>
-            <Radio size={14} color={connectionStatus === 'CONNECTED' ? '#00FF88' : '#FF0055'} />
+            <FontAwesomeIcon icon={faTowerBroadcast} style={{ fontSize: '13px', color: connectionStatus === 'CONNECTED' ? '#00FF88' : '#FF0055' }} />
             <span className="mono" style={{ color: 'var(--text-secondary)' }}>{connectionStatus}</span>
             {currentFrame?.inference_latency_ms && (
               <span className="mono" style={{ color: 'var(--accent-cyan)' }}>• {currentFrame.inference_latency_ms}ms</span>
@@ -74,7 +84,6 @@ export default function Navbar({ activeTab, setActiveTab, currentFrame, connecti
       {/* Nav Tabs */}
       <nav style={{ display: 'flex', gap: '6px', marginTop: '14px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', overflowX: 'auto' }}>
         {navItems.map(item => {
-          const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
@@ -82,7 +91,7 @@ export default function Navbar({ activeTab, setActiveTab, currentFrame, connecti
               onClick={() => setActiveTab(item.id)}
               className={`nav-tab ${isActive ? 'active' : ''}`}
             >
-              <Icon size={16} />
+              <FontAwesomeIcon icon={item.icon} style={{ fontSize: '14px' }} />
               <span>{item.label}</span>
             </button>
           );

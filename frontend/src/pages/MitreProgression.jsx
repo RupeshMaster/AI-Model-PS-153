@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Crosshair, Shield, AlertTriangle, ArrowRight, CheckCircle2, Info, Lock } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCrosshairs, faCircleCheck } from '@fortawesome/free-solid-svg-icons';
 
 export default function MitreProgression({ currentFrame }) {
   const [mitreData, setMitreData] = useState(null);
@@ -34,7 +35,7 @@ export default function MitreProgression({ currentFrame }) {
       {/* Header */}
       <div className="glass-panel" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <Crosshair size={22} color="var(--accent-cyan)" />
+          <FontAwesomeIcon icon={faCrosshairs} style={{ fontSize: '20px', color: 'var(--accent-cyan)' }} />
           <h2 style={{ fontSize: '1.25rem', fontWeight: '800' }}>MITRE ATT&CK Kill Chain Progression Hub</h2>
         </div>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -43,27 +44,34 @@ export default function MitreProgression({ currentFrame }) {
       </div>
 
       {/* Kill Chain Pipeline Matrix */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
-          Real-Time Kill Chain Progression Pipeline
-        </div>
+      <div className="glass-panel" style={{ padding: '20px' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '16px' }}>
+          Sequential Tactical Progression Pipeline
+        </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
-          {phases.map((phase, i) => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '14px' }}>
+          {phases.map(phase => {
             const isCurrent = currentPhaseIdx === phase.idx;
             const isPassed = currentPhaseIdx > phase.idx;
-            const isFuture = currentPhaseIdx < phase.idx;
 
             return (
               <div 
                 key={phase.idx}
                 style={{
-                  background: isCurrent ? 'rgba(255, 0, 85, 0.12)' : isPassed ? 'rgba(0, 240, 255, 0.06)' : 'var(--bg-elevated)',
-                  border: isCurrent ? '2px solid var(--accent-crimson)' : isPassed ? '1px solid rgba(0, 240, 255, 0.3)' : '1px solid var(--border-subtle)',
-                  borderRadius: '10px',
+                  background: isCurrent 
+                    ? 'rgba(255, 0, 85, 0.12)' 
+                    : isPassed 
+                    ? 'rgba(0, 240, 255, 0.05)' 
+                    : 'var(--bg-elevated)',
+                  border: isCurrent 
+                    ? '2px solid var(--accent-crimson)' 
+                    : isPassed 
+                    ? '1px solid rgba(0, 240, 255, 0.3)' 
+                    : '1px solid var(--border-subtle)',
+                  borderRadius: '12px',
                   padding: '16px',
                   position: 'relative',
-                  boxShadow: isCurrent ? '0 0 25px rgba(255, 0, 85, 0.35)' : 'none',
+                  boxShadow: isCurrent ? '0 0 20px rgba(255, 0, 85, 0.3)' : 'none',
                   transition: 'all 0.3s ease'
                 }}
               >
@@ -72,7 +80,7 @@ export default function MitreProgression({ currentFrame }) {
                     STAGE 0{phase.idx}
                   </span>
                   {isCurrent && <div className="radar-dot" style={{ backgroundColor: 'var(--accent-crimson)' }} />}
-                  {isPassed && <CheckCircle2 size={16} color="var(--accent-cyan)" />}
+                  {isPassed && <FontAwesomeIcon icon={faCircleCheck} style={{ fontSize: '15px', color: 'var(--accent-cyan)' }} />}
                 </div>
 
                 <div style={{ fontSize: '1rem', fontWeight: '700', color: isCurrent ? '#FFFFFF' : 'var(--text-primary)', marginBottom: '4px' }}>
