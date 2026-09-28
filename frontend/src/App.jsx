@@ -79,8 +79,7 @@ export default function App() {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(payload));
       if (payload.action === 'PLAY') setIsPlaying(true);
-      if (payload.action === 'PAUSE') setIsPlaying(false);
-      if (payload.action === 'RESET') setIsPlaying(false);
+      if (payload.action === 'PAUSE' || payload.action === 'RESET' || payload.action === 'SEEK') setIsPlaying(false);
     }
   };
 

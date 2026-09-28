@@ -131,6 +131,8 @@ class TelemetryStreamEngine:
             self.current_index = 0
             self.flagged_flows = []
             self.history_risks = []
+            self.full_timeline = []
+            self.first_threat_event = None
             self.is_playing = False
 
             print(f"[STREAM ENGINE] Ingested {self.total_events} events with {len(self.feature_cols)} features from {source_name}")
@@ -211,20 +213,36 @@ class TelemetryStreamEngine:
         phase_meta = MITRE_PHASES.get(pred_phase_idx, MITRE_PHASES[0])
         attack_meta = ATTACK_CLASS_MAP.get(pred_class_idx, ATTACK_CLASS_MAP[0])
 
-        current_label = self.labels[idx + self.seq_length - 1] if self.labels is not None else "Unknown"
+        current_event_num = min(self.total_events, idx + self.seq_length)
+
+        # Ensure full_timeline always has at least the initial observation
+        if not self.full_timeline:
+            self.full_timeline.append({
+                "event": current_event_num,
+                "risk": round(inf_prob, 2)
+            })
 
         stride = max(1, int(self.speed))
 
         if advance:
             self.history_risks.append(round(inf_prob, 2))
-            if len(self.history_risks) > 100:
+            if len(self.history_risks) > 60:
                 self.history_risks.pop(0)
+
+            # Record in full timeline for complete run graph view
+            if current_event_num > self.full_timeline[-1]["event"]:
+                self.full_timeline.append({
+                    "event": current_event_num,
+                    "risk": round(inf_prob, 2)
+                })
 
             # Track flagged anomaly flow
             if inf_prob >= 35.0 or pred_phase_idx > 0:
+                if self.first_threat_event is None:
+                    self.first_threat_event = current_event_num
                 flagged_item = {
-                    "id": f"FL-{min(self.total_events, idx + self.seq_length)}",
-                    "event_index": min(self.total_events, idx + self.seq_length),
+                    "id": f"FL-{current_event_num}",
+                    "event_index": current_event_num,
                     "timestamp": time.strftime("%H:%M:%S"),
                     "ground_truth_label": str(current_label),
                     "predicted_attack": attack_meta["name"],
@@ -260,6 +278,16 @@ class TelemetryStreamEngine:
             defcon_status = "NORMAL: BENIGN TELEMETRY BASELINE"
             defcon_color = "#00FF66"
 
+        def get_sampled_timeline():
+            tl = self.full_timeline
+            if len(tl) <= 120:
+                return tl
+            step = len(tl) / 120.0
+            sampled = [tl[int(i * step)] for i in range(120)]
+            if tl and tl[-1] not in sampled:
+                sampled.append(tl[-1])
+            return sampled
+
         frame = {
             "source_name": getattr(self, "source_name", "telemetry.csv"),
             "is_playing": self.is_playing,
@@ -291,6 +319,8 @@ class TelemetryStreamEngine:
             },
             "trajectory": trajectory,
             "history_risks": list(self.history_risks) if self.history_risks else [round(inf_prob, 2)],
+            "full_timeline": get_sampled_timeline(),
+            "first_threat_event": self.first_threat_event,
             "temporal_attention": [round(float(w), 4) for w in attn_weights.detach().cpu().numpy()[0]],
             "top_features": top_features,
             "latest_flagged_flow": self.flagged_flows[0] if self.flagged_flows else None
@@ -320,8 +350,16 @@ class TelemetryStreamEngine:
     def set_horizon(self, k_steps: int):
         self.k_steps = max(2, min(8, k_steps))
 
+    def seek_to(self, event_index: int):
+        """Seeks the playback pointer to any specific historical event index."""
+        target = max(self.seq_length, min(self.total_events, int(event_index)))
+        self.current_index = target - self.seq_length
+        self.is_playing = False
+
     def reset_stream(self):
         self.current_index = 0
         self.history_risks = []
+        self.full_timeline = []
+        self.first_threat_event = None
         self.flagged_flows = []
         self.is_playing = False

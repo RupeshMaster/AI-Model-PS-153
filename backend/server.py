@@ -269,6 +269,12 @@ async def websocket_telemetry_stream(websocket: WebSocket):
                     frame = engine.next_frame()
                     if frame:
                         await websocket.send_json(frame)
+                elif action == "SEEK":
+                    target = int(msg.get("event_index", 10))
+                    engine.seek_to(target)
+                    snapshot = engine.peek_frame()
+                    if snapshot:
+                        await websocket.send_json(snapshot)
                 elif action == "RESET":
                     engine.reset_stream()
                     snapshot = engine.peek_frame()

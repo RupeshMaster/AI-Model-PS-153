@@ -17,7 +17,9 @@ import {
   Cpu, 
   Sliders,
   Radio,
-  X
+  X,
+  Rewind,
+  FastForward
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -61,6 +63,7 @@ export default function LiveDashboard({
   const fileInputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [actionDeployed, setActionDeployed] = useState(false);
+  const [graphViewMode, setGraphViewMode] = useState('full'); // 'full' (Start-to-End) or 'window' (Rolling last 60 flows)
 
   // Extract frame info from live WebSocket stream
   const eventIndex = currentFrame?.event_index || 0;
@@ -69,6 +72,7 @@ export default function LiveDashboard({
   const latency = currentFrame?.inference_latency_ms || 3.4;
   const progressPct = totalEvents > 0 ? Math.min(100, Math.round((eventIndex / totalEvents) * 100)) : 0;
   const isCompleted = Boolean(currentFrame?.is_completed || (totalEvents > 0 && eventIndex >= totalEvents));
+  const firstThreatEvent = currentFrame?.first_threat_event || null;
 
   const defcon = currentFrame?.defcon || {
     level: 5,
@@ -123,33 +127,52 @@ export default function LiveDashboard({
     }
   };
 
-  // Chart configuration: Past Trajectory + Forward Rollout Cone
-  const pastLabels = historyRisks.map((_, i) => `Past -${historyRisks.length - 1 - i}`);
-  const futureLabels = trajectory.map(t => `+${t.step} Step${t.step > 1 ? 's' : ''} Ahead`);
-  const chartLabels = [...pastLabels, ...futureLabels];
+  // Chart configuration: Dual View (Complete Run Overview vs Sliding Window)
+  const fullTimeline = currentFrame?.full_timeline || [];
 
-  // Past data with nulls for future
-  const pastData = [...historyRisks, ...trajectory.map(() => null)];
-  
-  // Future trajectory with connecting point from current step
-  const futureData = [
-    ...historyRisks.slice(0, -1).map(() => null),
-    historyRisks[historyRisks.length - 1],
-    ...trajectory.map(t => t.infiltration_probability)
-  ];
+  let chartLabels = [];
+  let pastData = [];
+  let futureData = [];
+
+  if (graphViewMode === 'full' && fullTimeline.length > 0) {
+    const fullLabels = fullTimeline.map(pt => `Evt ${pt.event}`);
+    const fullRisks = fullTimeline.map(pt => pt.risk);
+    const futureLabels = trajectory.map(t => `+${t.step} Steps`);
+
+    chartLabels = [...fullLabels, ...futureLabels];
+    pastData = [...fullRisks, ...trajectory.map(() => null)];
+    futureData = [
+      ...fullRisks.slice(0, -1).map(() => null),
+      fullRisks[fullRisks.length - 1],
+      ...trajectory.map(t => t.infiltration_probability)
+    ];
+  } else {
+    const pastLabels = historyRisks.map((_, i) => `Past -${historyRisks.length - 1 - i}`);
+    const futureLabels = trajectory.map(t => `+${t.step} Step${t.step > 1 ? 's' : ''} Ahead`);
+
+    chartLabels = [...pastLabels, ...futureLabels];
+    pastData = [...historyRisks, ...trajectory.map(() => null)];
+    futureData = [
+      ...historyRisks.slice(0, -1).map(() => null),
+      historyRisks[historyRisks.length - 1],
+      ...trajectory.map(t => t.infiltration_probability)
+    ];
+  }
 
   const chartData = {
     labels: chartLabels,
     datasets: [
       {
-        label: 'Observed Risk History (Past Telemetry)',
+        label: graphViewMode === 'full'
+          ? `Complete Trajectory (Event ${fullTimeline[0]?.event || 10} ➔ ${eventIndex})`
+          : 'Observed Risk History (Recent Flows)',
         data: pastData,
         borderColor: '#00F0FF',
         backgroundColor: 'rgba(0, 240, 255, 0.10)',
         borderWidth: 2.5,
-        tension: 0.35,
+        tension: 0.3,
         fill: true,
-        pointRadius: 2,
+        pointRadius: graphViewMode === 'full' ? (fullTimeline.length > 60 ? 1 : 2) : 2,
       },
       {
         label: `AI Future Prediction Cone (+${trajectory.length} Steps Ahead)`,
@@ -158,7 +181,7 @@ export default function LiveDashboard({
         backgroundColor: 'rgba(255, 0, 85, 0.18)',
         borderWidth: 3,
         borderDash: [6, 4],
-        tension: 0.35,
+        tension: 0.3,
         fill: true,
         pointRadius: 4,
         pointBackgroundColor: '#FF0055',
@@ -183,13 +206,22 @@ export default function LiveDashboard({
         bodyColor: '#F0F4FC',
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
-        padding: 10
+        padding: 10,
+        callbacks: {
+          label: (context) => ` ${context.dataset.label}: ${context.parsed.y !== null ? Number(context.parsed.y).toFixed(1) + '%' : ''}`
+        }
       }
     },
     scales: {
       x: {
         grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#53627A', font: { family: 'JetBrains Mono', size: 10 } }
+        ticks: { 
+          color: '#53627A', 
+          font: { family: 'JetBrains Mono', size: 10 },
+          maxTicksLimit: graphViewMode === 'full' ? 14 : 20,
+          maxRotation: 45,
+          minRotation: 0
+        }
       },
       y: {
         min: 0,
@@ -562,7 +594,7 @@ export default function LiveDashboard({
         {/* Left Column: Forecasting Timeline & Forward Cone */}
         <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className="badge badge-crimson" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>STEP 3</span>
@@ -573,9 +605,56 @@ export default function LiveDashboard({
               </p>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>CURRENT RISK AT STEP T</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              {/* View Mode Toggle: Complete Trajectory vs Sliding Window */}
+              <div style={{ 
+                display: 'flex', 
+                background: 'rgba(255, 255, 255, 0.05)', 
+                padding: '3px', 
+                borderRadius: '8px', 
+                border: '1px solid var(--border-subtle)',
+                gap: '4px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setGraphViewMode('full')}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: graphViewMode === 'full' ? '700' : '500',
+                    borderRadius: '6px',
+                    border: graphViewMode === 'full' ? '1px solid var(--accent-cyan)' : 'none',
+                    background: graphViewMode === 'full' ? 'rgba(0, 240, 255, 0.2)' : 'transparent',
+                    color: graphViewMode === 'full' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Show complete trajectory curve from Event 0 to final event"
+                >
+                  📈 Full Run Overview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGraphViewMode('window')}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: graphViewMode === 'window' ? '700' : '500',
+                    borderRadius: '6px',
+                    border: graphViewMode === 'window' ? '1px solid var(--accent-cyan)' : 'none',
+                    background: graphViewMode === 'window' ? 'rgba(0, 240, 255, 0.2)' : 'transparent',
+                    color: graphViewMode === 'window' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Show sliding window of recent telemetry flows + prediction cone"
+                >
+                  ⏱ Recent Sliding Window
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'right', minWidth: '90px' }}>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>CURRENT RISK AT STEP T</div>
                 <div className="mono" style={{ fontSize: '1.25rem', fontWeight: '800', color: stepT.infiltration_probability >= 50 ? '#FF0055' : '#00F0FF' }}>
                   {stepT.infiltration_probability.toFixed(1)}%
                 </div>
@@ -586,6 +665,96 @@ export default function LiveDashboard({
           {/* Interactive Chart */}
           <div style={{ height: '330px', width: '100%' }}>
             <Line data={chartData} options={chartOptions} />
+          </div>
+
+          {/* Timeline Scrubber & Quick Jumps (Allows viewing starting phase, threat ramp-up, or final state anytime) */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={15} color="var(--accent-cyan)" />
+                <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  Interactive Timeline Scrubber
+                </span>
+                <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', background: 'rgba(0, 240, 255, 0.08)', padding: '2px 8px', borderRadius: '4px' }}>
+                  Viewing Event {eventIndex.toLocaleString()} / {totalEvents.toLocaleString()}
+                </span>
+              </div>
+
+              {/* Quick Jump Presets */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => sendControl({ action: 'SEEK', event_index: 10 })}
+                  title="Inspect the starting phase baseline graph (Event 10)"
+                  style={{ padding: '4px 10px', fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Rewind size={13} color="#00F0FF" />
+                  <span>Jump to Start (Event 10)</span>
+                </button>
+
+                {firstThreatEvent && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => sendControl({ action: 'SEEK', event_index: firstThreatEvent })}
+                    title={`Inspect attack onset at Event ${firstThreatEvent}`}
+                    style={{ padding: '4px 10px', fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'rgba(255, 184, 0, 0.5)', color: '#FFB800' }}
+                  >
+                    <AlertTriangle size={13} color="#FFB800" />
+                    <span>Attack Onset (Evt {firstThreatEvent})</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => sendControl({ action: 'SEEK', event_index: totalEvents })}
+                  title="Inspect completed final state"
+                  style={{ padding: '4px 10px', fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <FastForward size={13} color="#00FF88" />
+                  <span>Jump to Final Event</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Slider bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span className="mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Evt 10</span>
+              <input
+                type="range"
+                min={10}
+                max={Math.max(10, totalEvents)}
+                value={eventIndex}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  sendControl({ action: 'SEEK', event_index: val });
+                }}
+                style={{
+                  flex: 1,
+                  accentColor: 'var(--accent-cyan)',
+                  cursor: 'pointer',
+                  height: '6px'
+                }}
+              />
+              <span className="mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Evt {totalEvents.toLocaleString()}</span>
+            </div>
+
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+              <span>💡 Drag slider or click preset buttons to inspect the starting baseline graph, anomaly spikes, or breach point at any historical flow.</span>
+              <span style={{ color: graphViewMode === 'full' ? 'var(--accent-cyan)' : 'var(--text-secondary)' }}>
+                Active View: {graphViewMode === 'full' ? 'Complete Trajectory (0 ➔ N)' : 'Sliding Window (Last 60)'}
+              </span>
+            </div>
           </div>
 
           {/* Forward Horizon Prediction Cards (T+1 to T+K) */}
