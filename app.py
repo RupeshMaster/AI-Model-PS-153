@@ -1,164 +1,217 @@
+# pyrefly: ignore [missing-import]
 import streamlit as st
+# pyrefly: ignore [missing-import]
 import pandas as pd
+# pyrefly: ignore [missing-import]
 import numpy as np
 import time
+import os
+# pyrefly: ignore [missing-import]
 import torch
+# pyrefly: ignore [missing-import]
+import matplotlib.pyplot as plt
+
 from world_model import NetworkWorldModel
+from mitre_mapping import MITRE_PHASES, ATTACK_CLASS_MAP
 
-# --- Configuration ---
-st.set_page_config(page_title="AI World Model Dashboard", layout="wide", initial_sidebar_state="expanded")
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="AI Network World Model | Threat Forecasting",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- MITRE ATT&CK Mapping Engine ---
-MITRE_ENGINE = {
-    0: ("Benign", "Normal Traffic", "None"),
-    1: ("FTP-BruteForce", "Initial Access", "T1110 - Brute Force"),
-    2: ("SSH-Bruteforce", "Initial Access", "T1110 - Brute Force"),
-    3: ("DoS attacks-GoldenEye", "Impact", "T1498 - Network Denial of Service"),
-    4: ("DoS attacks-Slowloris", "Impact", "T1498 - Network Denial of Service"),
-    5: ("DoS attacks-SlowHTTPTest", "Impact", "T1498 - Network Denial of Service"),
-    6: ("DoS attacks-Hulk", "Impact", "T1498 - Network Denial of Service"),
-    7: ("Brute Force -Web", "Initial Access", "T1110 - Brute Force"),
-    8: ("Brute Force -XSS", "Initial Access", "T1190 - Exploit Public-Facing Application"),
-    9: ("SQL Injection", "Initial Access", "T1190 - Exploit Public-Facing Application"),
-    10: ("Infiltration", "Lateral Movement", "T1021 - Remote Services"),
-    11: ("Bot", "Command and Control", "T1071 - Application Layer Protocol"),
-    12: ("DDOS attack-LOIC-UDP", "Impact", "T1498 - Network Denial of Service"),
-    13: ("DDOS attack-HOIC", "Impact", "T1498 - Network Denial of Service"),
-    14: ("DDoS attacks-LOIC-HTTP", "Impact", "T1498 - Network Denial of Service"),
-    15: ("Label", "Unknown Anomaly", "Unclassified")
-}
+# Custom Styling
+st.markdown("""
+<style>
+    .metric-card {
+        background-color: #1E222D;
+        border-radius: 8px;
+        padding: 16px;
+        border: 1px solid #2E3648;
+    }
+    .stProgress > div > div > div > div {
+        background-color: #FF4B4B;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 @st.cache_resource
-def load_model():
+def load_world_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = NetworkWorldModel(input_size=78, hidden_size=128, num_layers=2, num_classes=16).to(device)
-    model.load_state_dict(torch.load("trained_world_model_FULL.pth", map_location=device))
+    model = NetworkWorldModel(
+        input_size=78,
+        hidden_size=128,
+        num_layers=2,
+        num_phases=6,
+        num_classes=16
+    ).to(device)
+
+    # Check for weights file
+    weights_path = "trained_network_world_model.pth"
+    if not os.path.exists(weights_path):
+        if os.path.exists("trained_world_model_FULL.pth"):
+            weights_path = "trained_world_model_FULL.pth"
+    
+    if os.path.exists(weights_path):
+        try:
+            model.load_state_dict(torch.load(weights_path, map_location=device))
+            st.sidebar.success(f"Loaded model weights from `{weights_path}`")
+        except Exception as e:
+            st.sidebar.warning(f"Using architecture with initialized weights: {e}")
+    else:
+        st.sidebar.info("Model initialized with clean weights.")
+
     model.eval()
     return model, device
 
-model, device = load_model()
+model, device = load_world_model()
 
-st.title("🛡️ AI World Model: Advanced Threat Detection")
-st.markdown("Real-time intrusion detection utilizing LSTM sequence modeling and K-step forward simulation.")
+# Header
+st.title("🛡️ AI Network World Model: Threat Forecasting Dashboard")
+st.caption("NTRO PS 26153 | Autonomous Network State Dynamics P(S_{t+1}|S_t) & K-Step Infiltration Rollout")
 
-st.sidebar.header("Control Panel")
-uploaded_file = st.sidebar.file_uploader("Upload Network Data (CSV)", type=['csv'])
-run_simulation = st.sidebar.button("▶ Run Real-Time Analysis")
+# Sidebar
+st.sidebar.header("📁 Upload Telemetry Data")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Network Telemetry (CSV)",
+    type=['csv'],
+    help="Upload a sanitized network flow CSV (e.g. CIC-IDS-2018 capture) with 78 features."
+)
 
-# Setup layout
-col1, col2 = st.columns([2, 1])
+if uploaded_file is not None:
+    st.sidebar.success(f"📄 Uploaded: `{uploaded_file.name}`")
 
-with col1:
-    st.subheader("📡 Real-Time Infiltration Probability")
-    chart_placeholder = st.empty()
-    
-with col2:
-    st.subheader("🔮 K-Step Future Forecast (Simulation)")
+st.sidebar.header("🕹️ Simulation Controls")
+k_steps = st.sidebar.slider("Forecasting Horizon (K-Steps Ahead)", min_value=2, max_value=8, value=4)
+sim_speed = st.sidebar.select_slider("Simulation Streaming Speed", options=["Fast", "Normal", "Step-by-Step"], value="Normal")
+sleep_times = {"Fast": 0.02, "Normal": 0.08, "Step-by-Step": 0.3}
+
+run_analysis = st.sidebar.button("▶ Run World Model Simulation", use_container_width=True)
+
+# Layout Columns
+col_main, col_forecast = st.columns([5, 4])
+
+with col_main:
+    st.subheader("📡 Real-Time Infiltration Probability Timeline")
+    timeline_placeholder = st.empty()
+
+with col_forecast:
+    st.subheader(f"🔮 True K-Step Forward Simulation ({k_steps} Horizons Ahead)")
     forecast_placeholder = st.empty()
 
 st.markdown("---")
-st.subheader("🎯 MITRE ATT&CK Mapping")
-mitre_placeholder = st.empty()
 
-st.markdown("---")
-st.subheader("🧠 Model Explainability (Saliency Gradients)")
-explain_placeholder = st.empty()
+col_killchain, col_explain = st.columns([1, 1])
 
-if run_simulation:
+with col_killchain:
+    st.subheader("🎯 MITRE ATT&CK Kill Chain Trajectory")
+    killchain_placeholder = st.empty()
+
+with col_explain:
+    st.subheader("🧠 Temporal Attention & Decision Explainability")
+    explain_placeholder = st.empty()
+
+# Real-Time Execution Loop
+if run_analysis:
     if uploaded_file is None:
-        st.error("Please upload a CSV file to analyze.")
-    else:
-        # Load Data
-        df = pd.read_csv(uploaded_file, nrows=10000)
-        expected_features = list(pd.read_csv("Cleaned_Data/clean_02-14-2018.csv", nrows=0).columns)
-        if 'Label' in expected_features:
-            expected_features.remove('Label')
-            
-        # Feature Alignment
-        for col in expected_features:
-            if col not in df.columns:
-                df[col] = 0
-                
-        X_raw = df[expected_features].apply(pd.to_numeric, errors='coerce').fillna(0).values
+        st.error("⚠️ Please upload a network telemetry CSV file in the sidebar to begin analysis.")
+        st.stop()
+
+    df = pd.read_csv(uploaded_file, nrows=5000)
+
+    df.columns = df.columns.str.strip()
+    df = df[df['Label'] != 'Label'] if 'Label' in df.columns else df
+
+    # Feature Alignment to 78 dimensions
+    feature_cols = [c for c in df.columns if c != 'Label']
+    if len(feature_cols) < 78:
+        for i in range(len(feature_cols), 78):
+            col_name = f"Feature_Pad_{i}"
+            df[col_name] = 0.0
+            feature_cols.append(col_name)
+    elif len(feature_cols) > 78:
+        feature_cols = feature_cols[:78]
+
+    X_raw = df[feature_cols].apply(pd.to_numeric, errors='coerce').replace([np.inf, -np.inf], np.nan).fillna(0.0).values
+    
+    # Simple MinMax scaling [0, 1]
+    denom = (X_raw.max(axis=0) - X_raw.min(axis=0))
+    denom[denom == 0] = 1.0
+    X_scaled = (X_raw - X_raw.min(axis=0)) / denom
+
+    seq_length = 10
+    total_samples = min(800, len(X_scaled) - seq_length - k_steps)
+    progress_bar = st.progress(0)
+
+    timeline_probs = []
+    
+    # Sliding window simulation
+    for i in range(0, total_samples, 4):
+        seq = X_scaled[i : i + seq_length]
+        seq_tensor = torch.tensor(seq, dtype=torch.float32).unsqueeze(0).to(device)
+
+        # 1. True Autoregressive K-Step Forward Rollout
+        trajectory = model.forward_rollout(seq_tensor, k_steps=k_steps)
+
+        # Current observed step (T)
+        next_state, inf_logit, phase_logits, class_logits, attn_weights = model(seq_tensor)
+        curr_inf_prob = torch.sigmoid(inf_logit).item() * 100.0
+        curr_phase_idx = int(np.argmax(torch.softmax(phase_logits, dim=-1).detach().cpu().numpy()[0]))
+        curr_class_idx = int(np.argmax(torch.softmax(class_logits, dim=-1).detach().cpu().numpy()[0]))
         
-        # We need sequences of length 10
-        seq_length = 10
-        progress_bar = st.progress(0)
-        
-        probabilities = []
-        
-        # Simulate real-time streaming (Process every 5th sequence to save time in UI)
-        for i in range(0, min(1000, len(X_raw) - seq_length), 5):
-            seq = X_raw[i : i + seq_length]
-            
-            # Normalize sequence (Dummy scale for UI speed, in prod use scaler)
-            seq_tensor = torch.tensor(seq, dtype=torch.float32).unsqueeze(0).to(device)
-            
-            # Enable gradients for explainability
-            seq_tensor.requires_grad_()
-            outputs = model(seq_tensor)
-            probs = torch.softmax(outputs, dim=1).detach().cpu().numpy()[0]
-                
-            # Class 10 is Infiltration (You can change this based on which attack you want to monitor)
-            inf_prob = probs[10] * 100 
-            top_class = np.argmax(probs)
-            
-            attack_name, mitre_tactic, mitre_tech = MITRE_ENGINE.get(top_class, MITRE_ENGINE[0])
-            
-            probabilities.append(inf_prob)
-            
-            # 1. Update Chart
-            chart_data = pd.DataFrame({'Infiltration Probability (%)': probabilities})
-            chart_placeholder.line_chart(chart_data, color="#FF4B4B")
-            
-            # 2. Update MITRE Mapping
-            if top_class != 0:
-                mitre_placeholder.error(f"""
-                **🚨 Detected Attack:** {attack_name}  
-                **🗺️ MITRE Tactic:** {mitre_tactic}  
-                **⚙️ MITRE Technique:** {mitre_tech}  
+        timeline_probs.append(curr_inf_prob)
+
+        # --- A. Update Timeline Chart ---
+        timeline_df = pd.DataFrame({"Current Infiltration Risk (%)": timeline_probs})
+        timeline_placeholder.line_chart(timeline_df, color="#FF4B4B")
+
+        # --- B. Update Forward Rollout Projections ---
+        with forecast_placeholder.container():
+            f_cols = st.columns(k_steps)
+            for idx, step_data in enumerate(trajectory):
+                with f_cols[idx]:
+                    risk = step_data["infiltration_probability"]
+                    h_phase = MITRE_PHASES[step_data["predicted_phase_idx"]]
+                    h_attack = ATTACK_CLASS_MAP[step_data["predicted_class_idx"]]["name"]
+                    
+                    st.metric(
+                        label=f"{step_data['horizon']}",
+                        value=f"{risk:.1f}%",
+                        delta=f"{risk - curr_inf_prob:+.1f}%" if idx == 0 else None,
+                        delta_color="inverse"
+                    )
+                    st.caption(f"**{h_phase['name']}**\n{h_attack}")
+
+        # --- C. Update MITRE ATT&CK Kill Chain Status ---
+        with killchain_placeholder.container():
+            phase_info = MITRE_PHASES[curr_phase_idx]
+            attack_info = ATTACK_CLASS_MAP[curr_class_idx]
+
+            if curr_phase_idx == 0:
+                st.success(f"**Status:** {phase_info['name']}\n\n*Network operating within benign parameters.*")
+            else:
+                st.error(f"""
+                🚨 **Active Threat:** {attack_info['name']}  
+                🗺️ **MITRE Tactic:** {attack_info['mitre_tactic']}  
+                ⚙️ **Technique:** {attack_info['mitre_technique']} (`{attack_info['mitre_id']}`)  
+                📊 **Kill Chain Stage:** {phase_info['name']} (Severity: {phase_info['severity']})  
+                🛡️ **Recommended Action:** {attack_info['recommended_action']}
                 """)
-            else:
-                mitre_placeholder.success(f"✅ Network Stable (Benign Traffic) - No ATT&CK Tactics Detected")
-                
-            # 3. Update Forecasting (K-step simulation)
-            # The PS requires forecasting. We statistically project the hidden state trajectory.
-            if len(probabilities) > 1:
-                delta = probabilities[-1] - probabilities[-2]
-            else:
-                delta = 0
-                
-            t1 = min(100, max(0, inf_prob + delta * 1.5))
-            t2 = min(100, max(0, t1 + delta * 2.0))
-            t3 = min(100, max(0, t2 + delta * 2.5))
-            t4 = min(100, max(0, t3 + delta * 3.0))
-            
-            forecast_placeholder.markdown(f"""
-            ### Projected Future States
-            *Based on current LSTM state vector trajectory:*
-            - **T+1 (Next Seq):** `{t1:.1f}%` Risk
-            - **T+2 (Next Seq):** `{t2:.1f}%` Risk
-            - **T+3 (Next Seq):** `{t3:.1f}%` Risk
-            - **T+4 (Next Seq):** `{t4:.1f}%` Risk
-            """)
-            
-            # 4. Update Explainability (Saliency Gradients)
-            if top_class != 0:
-                model.zero_grad()
-                outputs[0, top_class].backward()
-                saliency = seq_tensor.grad.abs().sum(dim=1).squeeze(0).cpu().numpy()
-                
-                top_indices = np.argsort(saliency)[-5:][::-1]
-                top_features = [expected_features[idx] for idx in top_indices]
-                top_scores = [float(saliency[idx]) for idx in top_indices]
-                
-                exp_df = pd.DataFrame({'Importance': top_scores}, index=top_features)
-                
-                with explain_placeholder.container():
-                    st.info(f"The AI flagged this traffic as **{attack_name}** because of anomalous patterns in these 5 features:")
-                    st.bar_chart(exp_df, color="#FF9900")
-            else:
-                explain_placeholder.empty()
-            
-            progress_bar.progress(i / 1000)
-            time.sleep(0.05)
+
+        # --- D. Update Explainability (Temporal Attention & Top Features) ---
+        with explain_placeholder.container():
+            attn_np = attn_weights.detach().cpu().numpy()[0]
+            attn_df = pd.DataFrame({
+                "Window Step": [f"T-{seq_length-1-w}" for w in range(seq_length)],
+                "Temporal Attention Weight": attn_np
+            }).set_index("Window Step")
+
+            st.bar_chart(attn_df, color="#17A2B8")
+            st.caption("Temporal Attention: Identifies which preceding packet events triggered the World Model dynamics.")
+
+        progress_bar.progress(min(1.0, (i + 4) / total_samples))
+        time.sleep(sleep_times[sim_speed])
+
+    st.success("✅ Real-Time Simulation Completed Successfully.")

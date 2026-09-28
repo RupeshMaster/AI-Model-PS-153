@@ -1,38 +1,64 @@
-# AI World Model Pipeline Architecture
+# 🛡️ AI World Model Pipeline Architecture
 
-To ensure perfect reproducibility and transparency for the hackathon judges, this document outlines the exact end-to-end data pipeline from raw network captures to real-time LSTM sequence forecasting.
+**Problem Statement:** NTRO 26153 — AI based Network Attack Forecasting from Network Traffic Data  
+**Theme:** Proactive Cyber Defense via Environment State-Transition Dynamics
 
-## 1. Data Ingestion (Raw CSVs)
-The CIC-IDS-2018 dataset arrives as massive tabular CSV files containing network flows extracted from PCAPs.
-- **Problem**: These files are too large for standard RAM (up to 10GB per file) and contain dirty data, Infinity values, and missing values.
-- **Solution**: We implemented `clean_dataset_to_disk.py` which processes the raw CSVs in safe memory chunks (250,000 rows at a time). 
+---
 
-## 2. Feature Extraction & Alignment
-To feed data into an AI, the feature dimensions must be perfectly locked.
-- We standardized the input vector to exactly **78 network features** (e.g., `Flow Duration`, `Fwd Pkt Len Max`, `SYN Flag Cnt`).
-- Any anomalous files missing columns (e.g., the `02-20-2018.csv` file which dropped a column mid-capture) are mathematically padded with zeros to ensure the strict `(78,)` shape requirement is met.
-- **Sanitization**: All string `Infinity` values are mapped to numerical NaNs, which are subsequently filled with `0` to prevent gradient explosion during training.
+## 1. Data Ingestion & Sanitization
+The CIC-IDS-2018 dataset arrives as massive tabular CSV files containing network flow telemetry extracted from PCAP captures.
+- **Memory Management**: Raw files (up to 10GB per capture) are processed using chunked memory streaming (250,000 rows at a time).
+- **Sanitization**: String `Infinity` and `NaN` values are mapped to numerical zero representations to preserve gradient stability.
+- **Dimension Locking**: Telemetry vectors are bound to 78 standardized network features (`Flow Duration`, `SYN Flag Cnt`, `IAT Mean`, etc.).
 
-## 3. Data Normalization
-A neural network cannot process raw bytes when some features are in the billions and others are boolean `0/1`.
-- We utilize `sklearn.preprocessing.MinMaxScaler` to compress all 78 dimensions into a strictly bounded `[0.0, 1.0]` tensor space.
+---
 
-## 4. Sequence Generation (The World Model Core)
-Basic machine learning (like Logistic Regression) analyzes a single packet at $T=0$. It has no memory.
-Our system builds a World Model by teaching the AI the concept of *Time*.
-- We implemented a custom PyTorch `Dataset` (`CICIDSDataset`) which slides a window across the network traffic.
-- Instead of returning a vector of shape `(78,)`, it returns a matrix of shape `(10, 78)`.
-- This means the AI looks at the *state-transition* of the last 10 network events before making a decision, allowing it to understand the context of an anomaly.
+## 2. Sequence State Generation (The Sliding Observation Window)
+Traditional static classifiers analyze a single packet $S_t$ in isolation, discarding causal and temporal progressions.
+Our World Model observes the evolving state of the environment over a sliding window:
+$$\mathbf{X}_t = [S_{t-9}, S_{t-8}, \dots, S_{t-1}, S_t] \in \mathbb{R}^{10 \times 78}$$
+Each observation vector $S_t$ is normalized into bounded $[0.0, 1.0]$ tensor space using `MinMaxScaler`.
 
-## 5. Model Architecture & Training
-- **Hardware**: Trained aggressively on a local NVIDIA RTX 4050 (GPU).
-- **Architecture**: A 2-Layer Deep Long Short-Term Memory (LSTM) Recurrent Neural Network.
-- **Capacity**: 128 Hidden State dimensions, terminating in a 16-class Linear Classifier.
-- **Optimization**: Adam Optimizer running at `lr=0.001` minimizing `CrossEntropyLoss`.
+---
 
-## 6. Real-Time Inference & Forecasting
-In the `app.py` Streamlit Dashboard:
-1. The model ingests a 10-packet window dynamically.
-2. It generates a probability distribution across 16 different MITRE ATT&CK stages.
-3. **K-Step Simulation**: It analyzes the current rate of change in the hidden state and projects the threat probabilities for $T+1, T+2, T+3, T+4$.
-4. **Explainability**: Using PyTorch auto-differentiation (Saliency Gradients), we calculate the exact derivative of the prediction with respect to the 78 input features to explain *why* the AI flagged the traffic in real-time.
+## 3. World Model Neural Architecture
+
+```text
+[Input Window: 10 x 78] 
+       │
+       ▼
+[Deep 2-Layer LSTM Backbone (Hidden Size: 128)]
+       │
+       ▼
+[Temporal Multi-Head Attention Layer]
+       │
+       ├─────────────────┬─────────────────┬─────────────────┐
+       ▼                 ▼                 ▼                 ▼
+[Head 1: Dynamics] [Head 2: Inf Risk] [Head 3: MITRE]   [Head 4: Class]
+ P(S_{t+1} | S_t)   P(Infiltration)   6 Kill Chain Phases 16 Specific Attacks
+  (Linear: 78)       (Linear: 1)       (Linear: 6)       (Linear: 16)
+```
+
+1. **Temporal Sequence Backbone:** Deep 2-layer LSTM maintaining recurrent hidden context of telemetry transitions.
+2. **Temporal Attention Layer:** Computes normalized attention weights across the 10 sliding events, pinpointing which preceding burst triggered the transition.
+3. **Dynamics Transition Head:** Predicts the continuous next-state telemetry vector $\hat{S}_{t+1} \in \mathbb{R}^{78}$.
+4. **Infiltration Risk Head:** Outputs binary compromise likelihood $P(\text{Infiltration} \in [0, 1])$.
+5. **MITRE ATT&CK Phase Head:** Maps trajectory into the 5 cyber kill chain stages (*Reconnaissance $\to$ Initial Access $\to$ Lateral Movement $\to$ C2 $\to$ Exfiltration*).
+6. **Granular Classification Head:** Predicts specific attack category across 16 classes.
+
+---
+
+## 4. Multi-Objective Supervised Dynamics Learning
+The model is trained end-to-end minimizing a composite loss:
+$$\mathcal{L}_{\text{total}} = \lambda_{\text{dyn}} \mathcal{L}_{\text{MSE}}(\hat{S}_{t+1}, S_{t+1}) + \lambda_{\text{inf}} \mathcal{L}_{\text{BCE}}(\hat{y}_{\text{inf}}, y_{\text{inf}}) + \lambda_{\text{phase}} \mathcal{L}_{\text{CE}}(\hat{y}_{\text{phase}}, y_{\text{phase}}) + \lambda_{\text{cls}} \mathcal{L}_{\text{CE}}(\hat{y}_{\text{cls}}, y_{\text{cls}})$$
+
+This ensures the network doesn't simply memorize attack labels—it learns the causal dynamics of how network telemetry states evolve over time.
+
+---
+
+## 5. Autoregressive $K$-Step Forward Simulation (Rollout)
+At step $t$, given the observed sequence $[S_{t-9:t}]$, the World Model simulates future states:
+1. Predicts $\hat{S}_{t+1}$ and evaluates infiltration probability.
+2. Appends $\hat{S}_{t+1}$ to the sequence and drops $S_{t-9}$.
+3. Predicts $\hat{S}_{t+2}$, $\hat{S}_{t+3}$, $\hat{S}_{t+4}$ recursively.
+4. Generates a multi-horizon risk trajectory $(T+1, T+2, T+3, T+4)$ to alert network administrators *before* the attack trajectory converges to compromise.
