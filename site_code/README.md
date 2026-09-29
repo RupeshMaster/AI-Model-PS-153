@@ -1,3 +1,14 @@
+---
+title: NTRO AI Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+---
+
 # 🛡️ AI World Model for Network Attack Forecasting (NTRO PS 26153)
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
