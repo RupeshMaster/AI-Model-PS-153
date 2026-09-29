@@ -96,7 +96,7 @@ export default function BenchmarkLab({ currentFrame }) {
           {/* Quick Downloads */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <a 
-              href=`${API_URL}/api/confusion-matrix/download` 
+              href={`${API_URL}/api/confusion-matrix/download`} 
               download="world_model_confusion_matrix.png"
               className="btn-primary"
               style={{ padding: '9px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -107,7 +107,7 @@ export default function BenchmarkLab({ currentFrame }) {
             </a>
 
             <a 
-              href=`${API_URL}/api/benchmark/download-report` 
+              href={`${API_URL}/api/benchmark/download-report`} 
               download="model_performance_report.md"
               className="btn-secondary"
               style={{ padding: '9px 16px', fontSize: '0.82rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -347,7 +347,7 @@ export default function BenchmarkLab({ currentFrame }) {
                 </span>
 
                 <a 
-                  href=`${API_URL}/api/confusion-matrix/download` 
+                  href={`${API_URL}/api/confusion-matrix/download`} 
                   download="world_model_confusion_matrix.png"
                   className="btn-secondary"
                   style={{ padding: '6px 12px', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
